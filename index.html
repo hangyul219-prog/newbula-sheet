@@ -3649,7 +3649,8 @@ function gearAccuracy(c,kind,w,count=1){let n=0;for(const s of gearTexts(c)){
   if(kind==='atk'&&/^명중 판정에 \+1/.test(s))n++;
   if(kind==='atk'&&w?.cat==='단검'&&/^단검으로 하는 명중 판정에 \+1/.test(s))n++;
   if(kind==='atk'&&count>1&&/^다중 공격을 할 때 명중 판정에 \+2/.test(s))n+=2;
-}return n}
+}if(kind==='spell'&&w?.off){const e=effectiveEquip(c);if([e.main,e.off].some(x=>x?.name&&x.cat==='비전'))n+=2*gearRawSkill(c,'마법 포격')}// 마법 포격: arcane weapon equipped
+return n}
 function gearBonus(c,kind,w,target){let n=0;for(const it of gearItems(c)){
   const s=it.sp;
   if(kind==='spell'&&/자신이 시전(?:한|하는) 주문이 추가 피해 5/.test(s))n+=5;
