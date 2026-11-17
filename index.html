@@ -4106,7 +4106,7 @@ function pClasses(c,d){const warn=d.clsLv!==+c.level?`<span class="warn">클래�
   ${c.classes.map((k,ci)=>{const lv=k.skills.reduce((a,x)=>a+(+x.sl||0),0);const def=CLASS[k.name];
     return`<div class="cls"><div class="cls-h"><b>${esc(k.name)}</b>${srcTag(def?.src)}<span class="lv">LV ${lv}</span>${lv>=10?'<span style="font-size:12px;color:var(--gold2)">· 마스터 (영웅 스킬 획득 가능)</span>':''}<span style="flex:1"></span><button class="btn sm" style="flex:none;white-space:nowrap" data-act="delcls" data-i="${ci}">삭제</button></div>
     ${def?`<div class="cls-free">${RULES.classInfo[k.name]?esc(RULES.classInfo[k.name])+'<br>':''}무료 혜택 — ${def.free.map(esc).join(' / ')}${def.bonus==='hp|mp'?` <select class="sel" data-pick="${ci}" style="width:auto;display:inline-flex">${[['hp','HP +5 선택'],['mp','MP +5 선택']].map(([v,l])=>`<option value="${v}"${(k.pick||'hp')===v?' selected':''}>${l}</option>`).join('')}</select>`:''}</div>`:''}
-    ${k.skills.map((s,si)=>`<div class="skill${s.sl?'':' off'}"><span class="sk-ic">${s.max>1?'◆':'●'}</span><div><span class="nm" data-act="skopen">${esc(s.n)}</span><span class="slp">${Array.from({length:Math.min(s.max||1,10)},(_,i)=>`<i class="${i<(s.sl||0)?'on':''}"></i>`).join('')}</span></div>
+    ${k.skills.map((s,si)=>`<div class="skill${s.sl?'':' off'}"><span class="sk-ic">${s.max>1?'◆':'●'}</span><div><span class="nm" data-act="skopen">${esc(s.n)}</span><span class="slp">${Array.from({length:Math.min(s.max||1,10)},(_,i)=>`<i class="${i<(s.sl||0)?'on':''}"></i>`).join('')}</span><button class="btn sm skpopb" data-act="skpop" data-c="${ci}" data-s="${si}" title="전투·여행 화면에서 내 캐릭터 위에 이 스킬의 이름과 설명을 띄워요">팝업</button></div>
       <div class="sl"><button data-act="sl" data-c="${ci}" data-s="${si}" data-v="-1"><i class="gi" data-ic="minus"></i></button><b>${s.sl||0}</b><button data-act="sl" data-c="${ci}" data-s="${si}" data-v="1"><i class="gi" data-ic="plus"></i></button></div>
       <div class="ds">${def?esc(s.d):`<textarea class="in" data-b="classes.${ci}.skills.${si}.d" placeholder="효과">${esc(s.d)}</textarea>`}</div></div>${CHOICE_SK[s.n]&&!['재능','상징'].includes(CHOICE_SK[s.n].lab)?choiceUI(c,s.n):''}`).join('')}
     ${def?.rules?`<details class="man" style="padding:2px 10px 8px"><summary>클래스 규칙 전문 (${SRCN[def.src]})</summary><div class="rules">${esc(def.rules)}</div></details>`:''}
@@ -4410,7 +4410,8 @@ document.addEventListener('click',async ev=>{const tb=ev.target.closest('[data-t
     doRoll(w.a1,w.a2,(+w.acc||0)+mas+gearAccuracy(c,'atk',w),rollDL(),`${w.name} 공격 (${AB[w.a1]}+${AB[w.a2]}${mas?` · 숙련+${mas}`:''})`,{dmg:(+w.dmg||0)+heroDamage(c,'atk',w)+gearBonus(c,'atk',w),dtype:w.type});break}
   case'cast':{if(TRAY.busy||last?._anim)break;const s=c.spells[i],o=gearSpellOptions(c,{...s,mp:+s.mp||0});if(c.mp<o.mp){toast('MP가 부족해요',1);break}c.mp-=o.mp;save();abilFx('c:'+c.id,s.n,'주문',s.d);
     if(s.off)doRoll('ins','wlp',gearAccuracy(c,'spell'),rollDL(),`${s.n} 시전 · 마법 판정 (MP ${o.mp})`);else{pushLog({kind:'text',who:c.name,text:`${s.n} 시전 (MP −${o.mp})`});toast(`${s.n} 시전`);render()}break}
-  case'skopen':t.closest('.skill').classList.toggle('open');break;
+  case'skpop':{const s=c.classes[+t.dataset.c].skills[+t.dataset.s];c.pop={id:uid(),n:s.n,d:String(s.d||CLASS[c.classes[+t.dataset.c].name]?.skills.find(x=>x.n===s.n)?.d||'').trim()};save();toast(`「${s.n}」 팝업을 띄웠어요`);break}
+case'skopen':t.closest('.skill').classList.toggle('open');break;
   case'cho':{const k=t.dataset.sk,v=t.dataset.v;c.picks=c.picks||{};const a=c.picks[k]=c.picks[k]||[],i=a.indexOf(v);if(i>=0)a.splice(i,1);else if(a.length<choiceMax(c,k))a.push(v);save();render();break}
   case'sl':{const s=c.classes[+t.dataset.c].skills[+t.dataset.s];s.sl=clamp((+s.sl||0)+ +t.dataset.v,0,CLASS[c.classes[+t.dataset.c].name]?.skills.find(x=>x.n===s.n)?.max||s.max||1);save();render();break}
   case'delcls':if(confirm(`${c.classes[i].name} 클래스를 지울까요?`)){c.classes.splice(i,1);save();render()}break;
@@ -5031,6 +5032,9 @@ html[data-theme="octo"] :is(label.f,.cls-free,summary){color:var(--parch2)!impor
 html[data-theme="octo"] .warn{color:#ff9a90!important}
 html[data-theme="octo"] :is(.muted,small,label,p,td,th,dt,dd,em,.ms,.aff,.md,.cls-free,.ds,.meta,.spec,summary,.rules,.hist){text-shadow:0 1px 2px rgba(0,0,0,.9)}/* Octopath text sits on a dark drop shadow; thin Gowun Dodum needs it to read */
 html[data-theme="octo"] .oct-art-empty p{color:var(--parch2)}
+</style>
+<style id="sk-pop">
+.skill .skpopb{margin-left:10px;padding:2px 10px;font-size:12px;white-space:nowrap;vertical-align:1px}
 </style>
 </body>
 </html>
