@@ -3460,7 +3460,7 @@ let _mig=0;function migrateAll(CH){let ch=false;for(const c of Object.values(CH|
 const HERO_ALIAS={};
 const heroName=n=>HERO_ALIAS[n]||n;
 const hasHero=(c,n)=>(c?.heroics||[]).some(h=>heroName(h.n)===n)||hsMnemoHeroes(c).includes(n);
-const heroDef=n=>RULES.heroics.find(h=>h.n===heroName(n))||(typeof customHeroics==='function'?customHeroics(typeof C==='function'?C():null):[]).find(h=>h.n===n);
+const heroDef=(n,ch)=>RULES.heroics.find(h=>h.n===heroName(n))||(typeof customHeroics==='function'?customHeroics(ch||(typeof C==='function'?C():null)):[]).find(h=>h.n===n);
 const heroScale=c=>(+c.level||0)>=40?10:5;
 const heroStatusCount=c=>Object.keys(STATUS).filter(s=>c.status?.[s]).length;
 const heroCheck=c=>hasHero(c,'역경')?heroStatusCount(c):0;
@@ -3468,7 +3468,7 @@ const heroIP=(c,n)=>Math.max(n>0?1:0,n-(hasHero(c,'넉넉한 주머니')?1:0));
 const heroResist=(c,type,round)=>hasHero(c,'가시덤불 심장')&&['빛','독'].includes(type)||hasHero(c,'성벽')&&round===1;
 function hopliteActive(c){const eq=effectiveEquip(c);return hasHero(c,'호플리테스')&&!!eq.main?.name&&!!eq.shield?.name&&!eq.off?.name&&!gearRecord(eq.main)?.customDef&&!gearRawSkill(c,'쌍방패 사용자')&&!gearRawSkill(c,'쌍방패지기')}
 function heroDamage(c,kind,w,tgCount=1,multi=1){let _cfx=0;if(typeof customFxSum==='function'){if(kind==='atk')_cfx=customFxSum(c,'atkDmg',{melee:w?.range!=='원거리',ranged:w?.range==='원거리'});else if(kind==='spell')_cfx=customFxSum(c,'spellDmg');}
-  let n=hasHero(c,'역경')?2*heroStatusCount(c):0;
+  let n=_cfx+(hasHero(c,'역경')?2*heroStatusCount(c):0);
   if(kind==='spell'&&hasHero(c,'강력한 주문'))n+=heroScale(c);
   if(kind==='atk'){
     const eq=effectiveEquip(c);
@@ -3484,7 +3484,7 @@ const HERO_AUTO=['추가 HP','추가 MP','추가 IP','역경','넉넉한 주머�
 const HERO_ACTIVE=['혜성','화산','희망','무장을 푸는 화술','백지화','두뇌 방출','쪽잠','다 읽혔어!'];
 const heroMode=n=>HERO_AUTO.includes(heroName(n))?'자동 반영':HERO_ACTIVE.includes(heroName(n))?'효과 적용':'조건 확인 · 수동 적용';
 function heroDialog(cid,name,onDone,gear){
-  const chars=LS.get('fu.chars',{}),c=chars[cid],def=gear?{n:gear.name,req:'장착한 장비의 효과',d:gear.sp||gear.note||''}:heroDef(name);
+  const chars=LS.get('fu.chars',{}),c=chars[cid],def=gear?{n:gear.name,req:'장착한 장비의 효과',d:gear.sp||gear.note||''}:heroDef(name,c);
   if(!c||!def||!gear&&!hasHero(c,def.n))return;
   if(c.owner!==USER&&localStorage.getItem('fu.role')==='pl')return;
   const old=document.getElementById('hero-dialog');if(old)old.remove();
@@ -3518,7 +3518,7 @@ function heroDialog(cid,name,onDone,gear){
       const targets=selected.map(k=>({k,o:resolve(k),pc:k.startsWith('c:')})),multi=!!el.querySelector('#hero-multi')?.checked;
       let mp=number('cost'),hp=number('hpc'),fp=number('fpc'),dmg=number('dmg'),heal=number('heal'),mpr=number('mp');
       const step=actor.level>=40?10:actor.level>=20?5:0;
-      if(n==='백지화'){if(mp<5||mp>30||mp%5||!targets.length||targets.length>mp/5)return (fail('MP 5~30을 5 단위로 쓰고, MP 5마다 대상 최대 1명을 고르세요.')+_cfx);}
+      if(n==='백지화'){if(mp<5||mp>30||mp%5||!targets.length||targets.length>mp/5)return fail('MP 5~30을 5 단위로 쓰고, MP 5마다 대상 최대 1명을 고르세요.');}
       else if(n==='쪽잠'){if(targets.length&&!(targets.length===1&&targets[0].o===actor))return fail('자신에게만 사용할 수 있어요.');if(!targets.length)targets.push({k:'c:'+cid,o:actor,pc:true});heal=mpr=20+Math.floor(actor.level/2);}
       else if(!targets.length&&(!manual||dmg||heal||mpr||el.querySelector('#hero-status')?.value||el.querySelector('#hero-clear')?.checked))return fail('대상을 고르세요.');
       if(['혜성','화산','두뇌 방출'].includes(n)&&!multi&&targets.length!==1)return fail('단일 대상 모드에서는 1명만 고르세요.');
@@ -3897,14 +3897,17 @@ const clsDef=(name,own)=>own?.custom?own:(customClassLib().find(x=>x.name===name
 function customHeroics(c){
   const seen=new Set(RULES.heroics.map(h=>h.n)),out=[];
   for(const src of [c?.classes||[],customClassLib()]){
-    for(const k of src){const h=k?.heroic;if(h?.n&&!seen.has(h.n)){seen.add(h.n);out.push({...h,src:'CUSTOM',custom:true,req:h.req||`${k.name} 마스터`})}}
+    for(const k of src){
+      const list=[...(Array.isArray(k?.heroics)?k.heroics:[]),...(k?.heroic?[k.heroic]:[])];
+      for(const h of list)if(h?.n&&!seen.has(h.n)){seen.add(h.n);out.push({...h,src:'CUSTOM',custom:true,req:h.req||`${k.name} 마스터`})}
+    }
   }
   return out;
 }
 function customFxSum(c,kind){
   let n=0;
   for(const k of c?.classes||[])for(const s of k.skills||[])if((+s.sl||0)>0&&s.fx?.kind===kind)n+=(+s.fx.val||0)+(+s.fx.perSl||0)*(+s.sl||0);
-  for(const h of c?.heroics||[]){const hd=heroDef(h.n);if(hd?.fx?.kind===kind)n+=(+hd.fx.val||0)+(+hd.fx.perSl||0)}
+  for(const h of c?.heroics||[]){const hd=heroDef(h.n,c);if(hd?.fx?.kind===kind)n+=(+hd.fx.val||0)+(+hd.fx.perSl||0)}
   return n;
 }
 function customSpellSkillMap(c){
@@ -4022,6 +4025,7 @@ function cwRand(){
     if(s.fx?.kind==='activeStatus'){s.fx.st=st;s.d=cwFxDesc(s.fx,s.max)}
   }
   if(base.heroic)base.heroic.req=`${name} 마스터`;
+  if(Array.isArray(base.heroics))for(const h of base.heroics)h.req=`${name} 마스터`;
   return base;
 }
 
@@ -4032,13 +4036,14 @@ function cwBlank(tpl){
   const t=tpl?JSON.parse(JSON.stringify(tpl)):{
     name:'',info:'',bonus:'hp',grants:[],extraFree:'',spellSkill:'',spells:[],
     skills:Array.from({length:5},(_,i)=>({n:`스킬 ${i+1}`,max:i===0?3:5,kind:i<2?'패시브':'행동',fx:{kind:'none'},d:''})),
-    heroic:{n:'',req:'',d:'',fx:{kind:'none'}}
+    heroics:[{n:'',req:'',d:'',fx:{kind:'none'}}]
   };
+  const rawH=Array.isArray(t.heroics)?t.heroics:(t.heroic?[t.heroic]:[]);
   const d={name:t.name||t.n||'',info:t.info||'',bonus:t.bonus??'hp',grants:t.grants?[...t.grants]:CW_GRANTS.filter(([k])=>new RegExp(k==='melee'?'근접 무기':k==='ranged'?'원거리 무기':k==='armor'?'방어구':k==='shield'?'방패':'의식').test((t.free||[]).join(' '))).map(([k])=>k),
     extraFree:t.extraFree||'',spellSkill:t.spellSkill||'',spells:(t.spells||t.classSpells||[]).map(x=>({...x})),
     hasSpells:!!(t.spellSkill||(t.spells||t.classSpells||[]).length),
     skills:(t.skills||[]).map(s=>({n:s.n||'',max:+s.max||1,kind:s.kind||'패시브',fx:s.fx?{...s.fx}:{kind:'none'},d:s.d||''})),
-    heroic:t.heroic?{n:t.heroic.n||'',req:t.heroic.req||'',d:t.heroic.d||'',fx:t.heroic.fx?{...t.heroic.fx}:{kind:'none'}}:{n:'',req:'',d:'',fx:{kind:'none'}}};
+    heroics:rawH.map(h=>({n:h?.n||'',req:h?.req||'',d:h?.d||'',fx:h?.fx?{...h.fx}:{kind:'none'}}))};
   if(!d.skills.length)d.skills.push({n:'기본 스킬',max:5,kind:'패시브',fx:{kind:'none'},d:''});
   return d;
 }
@@ -4064,12 +4069,14 @@ function cwValid(st){
 function cwToDef(d){
   const free=cwBuildFree(d);
   const name=d.name.trim();
+  const heroics=(d.heroics||[]).filter(h=>h?.n?.trim()).map(h=>({n:h.n.trim(),req:(h.req||`${name} 마스터`).trim(),d:(h.d||'').trim(),fx:h.fx?{...h.fx}:{kind:'none'},custom:true}));
   return{
     name,src:'CUSTOM',custom:true,info:d.info.trim(),bonus:d.bonus||'',free,
     spellSkill:d.hasSpells?(d.spellSkill.trim()||`${name} 마법`):'',
     classSpells:d.hasSpells?d.spells.filter(x=>x.n.trim()).map(x=>({...x,n:x.n.trim(),mp:mpNum(x.mp)||10,mpTxt:String(x.mp||10)})):[],
     skills:d.skills.map(s=>({n:s.n.trim()||'스킬',max:clamp(+s.max||1,1,10),kind:s.kind||'패시브',fx:s.fx?{...s.fx}:{kind:'none'},d:(s.d||'').trim()})),
-    heroic:d.heroic?.n?.trim()?{n:d.heroic.n.trim(),req:(d.heroic.req||`${name} 마스터`).trim(),d:(d.heroic.d||'').trim(),fx:d.heroic.fx?{...d.heroic.fx}:{kind:'none'},custom:true}:null
+    heroic:heroics[0]||null,
+    heroics
   };
 }
 function cwSave(equipOnChar){
@@ -4082,7 +4089,7 @@ function cwSave(equipOnChar){
   if(equipOnChar&&c){
     const prev=CW.editCharIdx!=null?c.classes[CW.editCharIdx]:c.classes.find(x=>x.name===def.name);
     const oldSl=n=>prev?.skills?.find(x=>x.n===n)?.sl||0;
-    const entry={name:def.name,custom:true,src:'CUSTOM',bonus:def.bonus,pick:def.bonus==='hp|mp'?(prev?.pick||'hp'):undefined,free:def.free,info:def.info,spellSkill:def.spellSkill,classSpells:def.classSpells,heroic:def.heroic,
+    const entry={name:def.name,custom:true,src:'CUSTOM',bonus:def.bonus,pick:def.bonus==='hp|mp'?(prev?.pick||'hp'):undefined,free:def.free,info:def.info,spellSkill:def.spellSkill,classSpells:def.classSpells,heroic:def.heroic,heroics:def.heroics,
       skills:def.skills.map(s=>({n:s.n,max:s.max,sl:Math.min(oldSl(s.n),s.max),kind:s.kind,fx:s.fx,d:s.d}))};
     if(CW.editCharIdx!=null)c.classes[CW.editCharIdx]=entry;
     else if(prev)Object.assign(prev,entry);
@@ -4157,14 +4164,17 @@ function cwBody(st){
     </div>`;
   }
   if(st==='extra'){
-    const hfx=d.heroic?.fx||{kind:'none'};
+    const heroics=d.heroics||[];
     return h('전용 영웅 기술 · 주문','마스터(10레벨) 시 여는 영웅 기술과, 주문 시전 클래스라면 전용 주문을 설정하세요.')+`<div class="wb">
-      <div class="cw-box"><div class="sub" style="margin-top:0">마스터 영웅 기술 (선택)</div>
-        <div class="row"><label class="f">영웅 기술 이름<input class="in" data-cwh="n" value="${esc(d.heroic.n)}" placeholder="예: 초신성 마력 (비워 두면 생략)"></label><label class="f">해금 조건<input class="in" data-cwh="req" value="${esc(d.heroic.req)}" placeholder="예: ${esc(d.name||'클래스')} 마스터"></label></div>
-        <div class="row" style="margin-top:8px"><label class="f" style="flex:2">패시브 자동 보너스 (선택)<select class="sel" data-cwhfx="kind">${[['none','직접 서술'],['atkDmg','공격 추가 피해'],['atkAcc','공격 명중 보너스'],['spellDmg','공격 주문 추가 피해'],['healBonus','회복량 보너스'],['defBonus','방어도 증가'],['mdefBonus','마법 방어도 증가']].map(([v,l])=>`<option value="${v}"${(hfx.kind||'none')===v?' selected':''}>${l}</option>`).join('')}</select></label>
-          ${hfx.kind!=='none'?`<label class="f" style="max-width:100px">보너스 수치<input class="in" type="number" data-cwhfx="val" value="${+(hfx.val??5)}"></label>`:''}
-        </div>
-        <label class="f" style="margin-top:8px">효과 설명<textarea class="in" data-cwh="d" style="min-height:60px">${esc(d.heroic.d)}</textarea></label>
+      <div class="cw-box"><div style="display:flex;align-items:center;gap:8px"><div class="sub" style="margin:0">마스터 영웅 기술 (${heroics.length})</div><span class="sp"></span><button class="btn sm pri" data-act="cwaddh"><i class="gi" data-ic="plus"></i> 영웅 기술 추가</button></div>
+        ${heroics.length?'':'<p class="wtip" style="margin:6px 0">마스터 시 해금할 전용 영웅 기술을 여러 개 추가할 수 있어요.</p>'}
+        ${heroics.map((hr,hi)=>{const hfx=hr.fx||{kind:'none'};return`<div class="cw-box" style="margin-top:8px">
+          <div class="row"><label class="f" style="flex:2">영웅 기술 이름<input class="in" data-cwh="${hi}|n" value="${esc(hr.n)}" placeholder="예: 초신성 마력 (비워 두면 생략)"></label><label class="f" style="flex:2">해금 조건<input class="in" data-cwh="${hi}|req" value="${esc(hr.req)}" placeholder="예: ${esc(d.name||'클래스')} 마스터"></label><button class="btn sm x" data-act="cwdelh" data-i="${hi}" style="align-self:end">삭제</button></div>
+          <div class="row" style="margin-top:8px"><label class="f" style="flex:2">패시브 자동 보너스 (선택)<select class="sel" data-cwhfx="${hi}|kind">${[['none','직접 서술'],['atkDmg','공격 추가 피해'],['atkAcc','공격 명중 보너스'],['spellDmg','공격 주문 추가 피해'],['healBonus','회복량 보너스'],['defBonus','방어도 증가'],['mdefBonus','마법 방어도 증가']].map(([v,l])=>`<option value="${v}"${(hfx.kind||'none')===v?' selected':''}>${l}</option>`).join('')}</select></label>
+            ${hfx.kind!=='none'?`<label class="f" style="max-width:100px">보너스 수치<input class="in" type="number" data-cwhfx="${hi}|val" value="${+(hfx.val??5)}"></label>`:''}
+          </div>
+          <label class="f" style="margin-top:8px">효과 설명<textarea class="in" data-cwh="${hi}|d" style="min-height:60px">${esc(hr.d)}</textarea></label>
+        </div>`}).join('')}
       </div>
       <div class="cw-box"><div style="display:flex;align-items:center;gap:8px"><div class="sub" style="margin:0">전용 주문 (${d.spells.length})</div><span class="sp"></span><button class="btn sm pri" data-act="cwaddsp"><i class="gi" data-ic="plus"></i> 주문 추가</button></div>
         ${d.hasSpells?'':'<p class="wtip" style="margin:6px 0">이전 단계에서 [주문 시전 클래스]를 켜면 캐릭터 생성·레벨업에서도 배울 수 있어요.</p>'}
@@ -4186,7 +4196,7 @@ function cwBody(st){
       <div class="wcls"><h4>${esc(def.name)} <em class="srct CUSTOM">CUSTOM</em><small>${BLAB(def.bonus)} · 스킬 ${def.skills.length}개 (총 SL ${sum})</small></h4>
         <div style="padding:10px 12px;font-size:13px;line-height:1.6">${def.info?esc(def.info)+'<br>':''}<b>무료 혜택:</b> ${esc(def.free.join(' / ')||'없음')}</div>
         ${def.skills.map(s=>`<div class="wsk"><b>${esc(s.n)} <small style="color:var(--gold)">${s.max>1?'◆'+s.max:'●'} ${esc(s.kind)}${s.fx?.kind&&s.fx.kind!=='none'?' · 자동':''}</small></b><div></div><p>${esc(s.d||cwFxDesc(s.fx,s.max)||'—')}</p></div>`).join('')}
-        ${def.heroic?`<div class="wsk"><b>영웅 기술 · ${esc(def.heroic.n)}</b><div></div><p>${esc(def.heroic.d)}</p></div>`:''}
+        ${(def.heroics||[]).map(hr=>`<div class="wsk"><b>영웅 기술 · ${esc(hr.n)} <small style="color:var(--gold)">${esc(hr.req||'')}</small></b><div></div><p>${esc(hr.d||'—')}</p></div>`).join('')}
         ${def.classSpells?.length?`<div class="wsk"><b>전용 주문 (${def.classSpells.length}종)</b><div></div><p>${def.classSpells.map(x=>`${esc(x.n)} (MP ${x.mp})`).join(', ')}</p></div>`:''}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
@@ -4486,7 +4496,7 @@ function pClasses(c,d){const warn=d.clsLv!==+c.level?`<span class="warn">클래�
       <div class="ds">${def?esc(s.d):`<textarea class="in" data-b="classes.${ci}.skills.${si}.d" placeholder="효과">${esc(s.d)}</textarea>`}</div></div>${CHOICE_SK[s.n]&&!['재능','상징'].includes(CHOICE_SK[s.n].lab)?choiceUI(c,s.n):''}${s.n==='요리'&&s.sl?cookUI(c,s.sl):''}`).join('')}
     ${def?.rules?`<details class="man" style="padding:2px 10px 8px"><summary>클래스 규칙 전문 (${SRCN[def.src]})</summary><div class="rules">${esc(def.rules)}</div></details>`:''}
     ${def?'':`<div style="padding:6px 10px"><button class="btn sm" data-act="addsk" data-c="${ci}"><i class="gi" data-ic="plus"></i> 스킬 추가</button></div>`}</div>`}).join('')||'<p class="muted">클래스를 추가하세요. 보통 2~3개 클래스에 5레벨을 나눠 배정해요.</p>'}
-  ${card('영웅 기술','HEROIC SKILLS',`${(c.heroics||[]).map((h,i)=>{const def=heroDef(h.n);return`<div class="spc"><div class="t"><b>${esc(h.n)}</b>${srcTag(def?.src)}${manTag(h.n)}<small>${heroMode(h.n)}</small><button class="btn sm" data-act="hero-use" data-i="${i}">사용 · 효과 보기</button><span style="flex:1"></span><button class="btn sm" style="flex:none;white-space:nowrap" data-act="delhero" data-i="${i}">삭제</button></div>${def?.req?`<div class="meta">조건: ${esc(def.req)}</div>`:''}<p class="d" style="white-space:pre-wrap">${esc(def?.d||def?.sum||'')}</p></div>`}).join('')||'<p class="muted" style="margin-top:0">클래스 하나를 10레벨까지 마스터할 때마다 영웅 기술 하나를 얻어요.</p>'}
+  ${card('영웅 기술','HEROIC SKILLS',`${(c.heroics||[]).map((h,i)=>{const def=heroDef(h.n,c);return`<div class="spc"><div class="t"><b>${esc(h.n)}</b>${srcTag(def?.src)}${manTag(h.n)}<small>${heroMode(h.n)}</small><button class="btn sm" data-act="hero-use" data-i="${i}">사용 · 효과 보기</button><span style="flex:1"></span><button class="btn sm" style="flex:none;white-space:nowrap" data-act="delhero" data-i="${i}">삭제</button></div>${def?.req?`<div class="meta">조건: ${esc(def.req)}</div>`:''}<p class="d" style="white-space:pre-wrap">${esc(def?.d||def?.sum||'')}</p></div>`}).join('')||'<p class="muted" style="margin-top:0">클래스 하나를 10레벨까지 마스터할 때마다 영웅 기술 하나를 얻어요.</p>'}
    <select class="sel" data-addhero="1"><option value="">＋ 영웅 기술 추가…</option>${bySrc([...RULES.heroics,...customHeroics(c)].filter(h=>!(c.heroics||[]).some(x=>x.n===h.n)),(s,l)=>`<optgroup label="${SRCN[s]}">${l.map(h=>`<option value="${esc(h.n)}">${esc(h.n)}${h.req?' — '+esc(h.req).slice(0,40):''}</option>`).join('')}</optgroup>`)}</select>`)}`}
 
 function weaponOpts(c,curName){const okM=allowed(c,'melee'),okR=allowed(c,'ranged');
@@ -4523,7 +4533,7 @@ function hsPanel(c){const S=GEAR_CATALOG.filter(x=>x.kind==='spheres'),sp=n=>S.f
      ${mfit.length?`<select class="sel hs-add" data-hsmadd="${k}" aria-label="${l}에 므네모스피어 넣기"><option value="">+ 므네모스피어 넣기</option>${mfit.map(m=>`<option value="${m.id}">${esc(m.cls)} · Lv ${hsMLv(m)}</option>`).join('')}</select>`:''}
      ${F&&hsLines(F).length?`<p class="hs-fx">${hsLines(F).map(esc).join(' · ')}</p>`:''}${M.some(m=>m._off)?'<p class="warn hs-fx">이미 가진 스킬과 겹치는 므네모스피어는 꺼져 있어요.</p>':''}</div>`}).join('')||'<p class="muted">무기나 방어구를 장비하면 구슬 칸이 생겨요.</p>';
   return rows+hsMnemoPanel(c,placed)}
-function hsHeroList(cls){return(RULES.heroics||[]).filter(h=>{const q=String(h.req||''),cl=allClasses().filter(k=>q.includes(k.name)).map(k=>k.name);return!/레벨|스킬을/.test(q)&&(cl.length===0||cl.length===1&&cl[0]===cls)}).map(h=>h.n)}// its conditions must be met by this sphere alone
+function hsHeroList(cls){return([...(RULES.heroics||[]),...(typeof customHeroics==='function'?customHeroics(typeof C==='function'?C():null):[])]).filter(h=>{const q=String(h.req||''),cl=allClasses().filter(k=>q.includes(k.name)).map(k=>k.name);return!/레벨|스킬을/.test(q)&&(cl.length===0||cl.length===1&&cl[0]===cls)}).map(h=>h.n)}// its conditions must be met by this sphere alone
 function hsMnemoPanel(c,placed){const L=c.mnemo||[];
   return`<div class="hs-mn"><div class="hs-h"><b>므네모스피어</b><span class="muted">클래스 스킬을 담은 구슬 · 최대 Lv 5 · 무료 혜택·의식·프로젝트는 주지 않아요</span></div>
   ${L.map(m=>{const K=CLASSES.find(k=>k.name===m.cls),lv=hsMLv(m),ss=SPELL_SKILL[m.cls],nsp=ss?+(m.sk?.[ss]||0):0;
@@ -4699,7 +4709,7 @@ function wizBuild(preview){const c=newChar();c.identity=W.identity.trim();c.them
     const pack=[];if(ws[0]){c.equip.main=weaponToEq(ws[0]);for(const w of ws.slice(1)){if(!c.equip.off.name&&ws[0].hand!=='양손'&&w.hand!=='양손'&&!c.equip.shield.name)c.equip.off=weaponToEq(w);else pack.push(w.n)}}
     pack.push(...custom);if(pack.length)c.pack=pack.join(', ');c.zenit=zen}
   else{c.attr=Object.fromEntries(Object.keys(ATTR).map(k=>[k,+W.attr[k]||8]));
-    c.classes=W.cls.map(k=>{const d=clsDef(k);return{name:k,pick:d.bonus==='hp|mp'?(W.picks?.[k]||'hp'):undefined,...(d.custom?{custom:true,bonus:d.bonus,free:[...(d.free||[])],info:d.info||'',heroic:d.heroic?JSON.parse(JSON.stringify(d.heroic)):null,spellSkill:d.spellSkill||'',classSpells:d.classSpells?JSON.parse(JSON.stringify(d.classSpells)):[]}:{}),skills:d.skills.map(s=>({n:s.n,max:s.max,sl:W.skills[k]?.[s.n]||0,d:s.d,...(s.fx&&s.fx.kind!=='none'?{fx:JSON.parse(JSON.stringify(s.fx))}:{})}))}});
+    c.classes=W.cls.map(k=>{const d=clsDef(k);return{name:k,pick:d.bonus==='hp|mp'?(W.picks?.[k]||'hp'):undefined,...(d.custom?{custom:true,bonus:d.bonus,free:[...(d.free||[])],info:d.info||'',heroic:d.heroic?JSON.parse(JSON.stringify(d.heroic)):null,heroics:d.heroics?JSON.parse(JSON.stringify(d.heroics)):(d.heroic?[JSON.parse(JSON.stringify(d.heroic))]:[]),spellSkill:d.spellSkill||'',classSpells:d.classSpells?JSON.parse(JSON.stringify(d.classSpells)):[]}:{}),skills:d.skills.map(s=>({n:s.n,max:s.max,sl:W.skills[k]?.[s.n]||0,d:s.d,...(s.fx&&s.fx.kind!=='none'?{fx:JSON.parse(JSON.stringify(s.fx))}:{})}))}});
     const g=wGear();if(g.m)c.equip.main=weaponToEq(g.m);if(g.o)c.equip.off=weaponToEq(g.o);if(g.a)c.equip.armor=armorToEq(g.a);if(g.s)c.equip.shield={name:g.s.n,def:g.s.def,mdef:g.s.mdef};
     for(const[cls,list]of Object.entries(W.spells))for(const n of list){const def=customSpellList(cls).find(x=>x.n===n);if(def)c.spells.push(spellToC(def,cls))}
     c.zenit=500-g.cost}
@@ -4734,7 +4744,7 @@ function lvBody(st){const c=C(),n=LV.i+1,h=(t,p)=>`<div class="wh"><small>STEP $
   if(st==='traits')return h('정체성과 테마','캐릭터가 성장했다면 정체성이나 테마를 바꿀 수 있어요. 무엇이 변화를 일으켰는지 이야기해 주세요.')+`<div class="wb"><div class="wfield"><span class="wtip">정체성</span><input class="in" id="l-identity" value="${esc(LV.identity)}"><span class="wtip">테마</span><input class="in" id="l-theme" value="${esc(LV.theme)}"></div></div>`;
   return''}
 function lvFinish(){const c=C();if(!c||!LV||c.exp<10||c.level>=99)return;const steps=lvSteps();if(!steps.every(lvValid))return toast('레벨업 선택을 확인해 주세요',1);const own=c.classes.find(k=>k.name===LV.cls),definition=clsDef(LV.cls,c.classes.find(x=>x.name===LV.cls))?.skills.find(s=>s.n===LV.skill)||own?.skills.find(s=>s.n===LV.skill);if(!definition||(own?.skills||[]).reduce((a,x)=>a+(+x.sl||0),0)>=10||(own?.skills.find(s=>s.n===LV.skill)?.sl||0)>=(definition.max||1))return;const before=derive(c);const lvBefore=c.level;
-  let k=c.classes.find(x=>x.name===LV.cls),isNew=false;if(!k){isNew=true;const _cd=clsDef(LV.cls,c.classes.find(x=>x.name===LV.cls));k={name:LV.cls,pick:_cd.bonus==='hp|mp'?'hp':undefined,...(_cd.custom?{custom:true,bonus:_cd.bonus,free:[...(_cd.free||[])],info:_cd.info||'',heroic:_cd.heroic?JSON.parse(JSON.stringify(_cd.heroic)):null,spellSkill:_cd.spellSkill||'',classSpells:_cd.classSpells?JSON.parse(JSON.stringify(_cd.classSpells)):[]}:{}),skills:_cd.skills.map(s=>({n:s.n,max:s.max,sl:0,d:s.d,...(s.fx&&s.fx.kind!=='none'?{fx:JSON.parse(JSON.stringify(s.fx))}:{})}))};c.classes.push(k)}
+  let k=c.classes.find(x=>x.name===LV.cls),isNew=false;if(!k){isNew=true;const _cd=clsDef(LV.cls,c.classes.find(x=>x.name===LV.cls));k={name:LV.cls,pick:_cd.bonus==='hp|mp'?'hp':undefined,...(_cd.custom?{custom:true,bonus:_cd.bonus,free:[...(_cd.free||[])],info:_cd.info||'',heroic:_cd.heroic?JSON.parse(JSON.stringify(_cd.heroic)):null,heroics:_cd.heroics?JSON.parse(JSON.stringify(_cd.heroics)):(_cd.heroic?[JSON.parse(JSON.stringify(_cd.heroic))]:[]),spellSkill:_cd.spellSkill||'',classSpells:_cd.classSpells?JSON.parse(JSON.stringify(_cd.classSpells)):[]}:{}),skills:_cd.skills.map(s=>({n:s.n,max:s.max,sl:0,d:s.d,...(s.fx&&s.fx.kind!=='none'?{fx:JSON.parse(JSON.stringify(s.fx))}:{})}))};c.classes.push(k)}
   const s=k.skills.find(x=>x.n===LV.skill);s.sl=(+s.sl||0)+1;
   if(LV.spell){const def= customSpellList(LV.cls,c).find(x=>x.n===LV.spell);if(def)c.spells.push(spellToC(def,LV.cls))}
   if(LV.attr)c.attr[LV.attr]=Math.min(12,+c.attr[LV.attr]+2);
@@ -4754,8 +4764,8 @@ document.addEventListener('input',ev=>{const t=ev.target;
     if(t.dataset.cw){CW.d[t.dataset.cw]=t.value;const nb=$('#modal [data-act="cwnext"]');if(nb&&CW.i===1)nb.disabled=!cwValid('base');return}
     if(t.dataset.cws){const[i,f]=t.dataset.cws.split('|');const sk=CW.d.skills?.[+i];if(sk){sk[f]=f==='max'?clamp(+t.value||1,1,10):t.value}const nb=$('#modal [data-act="cwnext"]');if(nb&&CW.i===2)nb.disabled=!cwValid('skills');return}
     if(t.dataset.cwfx){const[i,f]=t.dataset.cwfx.split('|');const fx=CW.d.skills?.[+i]?.fx;if(fx)fx[f]=['val','perSl','mp'].includes(f)?(+t.value||0):t.value;return}
-    if(t.dataset.cwh){CW.d.heroic=CW.d.heroic||{n:'',req:'',d:'',fx:{kind:'none',val:0}};CW.d.heroic[t.dataset.cwh]=t.value;return}
-    if(t.dataset.cwhfx){CW.d.heroic=CW.d.heroic||{};CW.d.heroic.fx=CW.d.heroic.fx||{kind:'none',val:0};CW.d.heroic.fx[t.dataset.cwhfx]=['val','perSl','mp'].includes(t.dataset.cwhfx)?(+t.value||0):t.value;return}
+    if(t.dataset.cwh){const[i,f]=t.dataset.cwh.split('|');const hr=CW.d.heroics?.[+i];if(hr)hr[f]=t.value;return}
+    if(t.dataset.cwhfx){const[i,f]=t.dataset.cwhfx.split('|');const hr=CW.d.heroics?.[+i];if(hr){hr.fx=hr.fx||{kind:'none',val:0};hr.fx[f]=['val','perSl','mp'].includes(f)?(+t.value||0):t.value}return}
     if(t.dataset.cwsp){const[i,f]=t.dataset.cwsp.split('|');const sp=CW.d.spells?.[+i];if(sp)sp[f]=['mp','dmg'].includes(f)?clamp(+t.value||0,0,999):t.value;return}
   }
   if(t.id?.startsWith('w-')&&W){W[t.id.slice(2)]=t.value;const b=$('#modal [data-act="wnext"],#modal [data-act="wfinish"]');if(b)b.disabled=!wizValid(wizSteps()[W.i]);return}
@@ -4769,8 +4779,8 @@ document.addEventListener('change',ev=>{const t=ev.target;if(t.id==='showall'){L
     if(t.dataset.cw){CW.d[t.dataset.cw]=t.type==='checkbox'?t.checked:t.value;if(needR)renderCw();return}
     if(t.dataset.cws){const[i,f]=t.dataset.cws.split('|');const sk=CW.d.skills?.[+i];if(sk)sk[f]=f==='max'?clamp(+t.value||1,1,10):t.value;if(needR)renderCw();return}
     if(t.dataset.cwfx){const[i,f]=t.dataset.cwfx.split('|');const sk=CW.d.skills?.[+i];if(sk){sk.fx=sk.fx||{kind:'none'};sk.fx[f]=['val','perSl','mp'].includes(f)?(+t.value||0):t.value;if(f==='kind'){const k=t.value;sk.fx={kind:k,val:k==='activeDmg'?15:k==='activeHeal'?20:0,perSl:k==='defBonus'||k==='mdefBonus'?1:k==='atkDmg'||k==='spellDmg'?2:k==='activeDmg'||k==='activeHeal'?5:k==='healBonus'?5:k==='activeBuff'?3:1,cond:'all',type:sk.fx.type||'물리',tgt:k==='activeHeal'||k==='activeBuff'?'ally':'foe',st:sk.fx.st||'dazed',buff:sk.fx.buff||'dmg+',ty:sk.fx.ty||'화염',res:sk.fx.res||'hp',mp:k.startsWith('active')?(sk.fx.mp??10):0}}}if(needR)renderCw();return}
-    if(t.dataset.cwh){CW.d.heroic=CW.d.heroic||{n:'',req:'',d:'',fx:{kind:'none',val:0}};CW.d.heroic[t.dataset.cwh]=t.value;return}
-    if(t.dataset.cwhfx){CW.d.heroic=CW.d.heroic||{};CW.d.heroic.fx=CW.d.heroic.fx||{kind:'none',val:5};CW.d.heroic.fx[t.dataset.cwhfx]=['val','perSl','mp'].includes(t.dataset.cwhfx)?(+t.value||0):t.value;if(needR)renderCw();return}
+    if(t.dataset.cwh){const[i,f]=t.dataset.cwh.split('|');const hr=CW.d.heroics?.[+i];if(hr)hr[f]=t.value;return}
+    if(t.dataset.cwhfx){const[i,f]=t.dataset.cwhfx.split('|');const hr=CW.d.heroics?.[+i];if(hr){hr.fx=hr.fx||{kind:'none',val:5};hr.fx[f]=['val','perSl','mp'].includes(f)?(+t.value||0):t.value;if(f==='kind'&&hr.fx.kind!=='none'&&hr.fx.val==null)hr.fx.val=5}if(needR)renderCw();return}
     if(t.dataset.cwspb){const[i,f]=t.dataset.cwspb.split('|');const sp=CW.d.spells?.[+i];if(sp){sp[f]=t.type==='checkbox'?t.checked:t.value;renderCw()}return}
     if(t.dataset.cwsp){const[i,f]=t.dataset.cwsp.split('|');const sp=CW.d.spells?.[+i];if(sp)sp[f]=t.type==='checkbox'?t.checked:['mp','dmg'].includes(f)?clamp(+t.value||0,0,999):t.value;if(needR)renderCw();return}
   }
@@ -4782,7 +4792,7 @@ document.addEventListener('change',ev=>{const t=ev.target;if(t.id==='showall'){L
   if(t.dataset.wgear){W.gear[t.dataset.wgear]=t.value;const w=RULES.weapons.find(x=>x.n===W.gear.main);if(w?.hand==='양손'){W.gear.off='';W.gear.shield=''}if(W.gear.off)W.gear.shield='';renderWiz();return}
   if(t.id==='w-theme'&&W){W.theme=t.value;renderWiz();return}
   if(!c)return;
-  if(t.id==='addcls'){const v=t.value;t.value='';if(!v)return;if(v==='__custom'){cwStart();return}const d=allClasses().find(k=>k.name===v);if(d){c.classes.push({name:d.name,...(d.bonus==='hp|mp'?{pick:'hp'}:{}),...(d.custom?{custom:true,bonus:d.bonus,free:[...(d.free||[])],info:d.info||'',heroic:d.heroic?JSON.parse(JSON.stringify(d.heroic)):null,spellSkill:d.spellSkill||'',classSpells:d.classSpells?JSON.parse(JSON.stringify(d.classSpells)):[]}:{}),skills:d.skills.map(s=>({n:s.n,max:s.max,sl:0,d:s.d,...(s.fx&&s.fx.kind!=='none'?{fx:JSON.parse(JSON.stringify(s.fx))}:{})}))});fixRes(c);save();render()}return}
+  if(t.id==='addcls'){const v=t.value;t.value='';if(!v)return;if(v==='__custom'){cwStart();return}const d=allClasses().find(k=>k.name===v);if(d){c.classes.push({name:d.name,...(d.bonus==='hp|mp'?{pick:'hp'}:{}),...(d.custom?{custom:true,bonus:d.bonus,free:[...(d.free||[])],info:d.info||'',heroic:d.heroic?JSON.parse(JSON.stringify(d.heroic)):null,heroics:d.heroics?JSON.parse(JSON.stringify(d.heroics)):(d.heroic?[JSON.parse(JSON.stringify(d.heroic))]:[]),spellSkill:d.spellSkill||'',classSpells:d.classSpells?JSON.parse(JSON.stringify(d.classSpells)):[]}:{}),skills:d.skills.map(s=>({n:s.n,max:s.max,sl:0,d:s.d,...(s.fx&&s.fx.kind!=='none'?{fx:JSON.parse(JSON.stringify(s.fx))}:{})}))});fixRes(c);save();render()}return}
   if(t.dataset.weapon){const w=RULES.weapons.find(x=>x.n===t.value);if(w){if(t.dataset.weapon==='off'&&w.hand==='양손'&&!(hasHero(c,'괴력의 손아귀')&&['도리깨','중량','창','검'].includes(w.cat)))return toast('이 양손 무기는 보조 손에 장비할 수 없어요',1);c.equip[t.dataset.weapon]=weaponToEq(w);if(t.dataset.weapon==='off'){c.equip.shield={name:'',def:0,mdef:0};c.equip.shield2={name:'',def:0,mdef:0};if(!canOneHand(c,c.equip.main))c.equip.main=blankW()}if(t.dataset.weapon==='main'){c.equip.shield2={name:'',def:0,mdef:0};if(w.hand==='양손'&&!canOneHand(c,w)){c.equip.off=blankW();c.equip.shield={name:'',def:0,mdef:0}}}}else c.equip[t.dataset.weapon]=blankW();save();render();return}
   if(t.dataset.mnadd){if(!t.value)return;c.mnemo=c.mnemo||[];c.mnemo.push({id:uid(),cls:t.value,sk:{},hero:'',spells:[]});save();render();return}
   if(t.dataset.mnhero){const m=(c.mnemo||[]).find(x=>x.id===t.dataset.mnhero);if(m){m.hero=t.value;save();render()}return}
@@ -4816,7 +4826,7 @@ document.addEventListener('click',async ev=>{const tb=ev.target.closest('[data-t
   case'cwblank':if(CW){CW.d=cwBlank();CW.editCharIdx=null;CW.libIdx=null;CW.i=1;renderCw()}break;
   case'cwtpl':{const tp=CW_TPLS[i];if(CW&&tp){CW.d=cwBlank(tp);CW.editCharIdx=null;CW.libIdx=null;CW.i=1;renderCw()}break}
   case'cwloadlib':if(CW)cwStart({libIdx:i});break;
-  case'cweqlib':{const it=customClassLib()[i];if(!it)break;if(!c){toast('먼저 캐릭터를 만들거나 선택해 주세요',1);break}if(c.classes.some(x=>x.name===it.name)){toast('이미 보유한 클래스예요',1);break}c.classes.push({name:it.name,...(it.bonus==='hp|mp'?{pick:'hp'}:{}),custom:true,bonus:it.bonus,free:[...(it.free||[])],info:it.info||'',heroic:it.heroic?JSON.parse(JSON.stringify(it.heroic)):null,spellSkill:it.spellSkill||'',classSpells:it.classSpells?JSON.parse(JSON.stringify(it.classSpells)):[],skills:it.skills.map(s=>({n:s.n,max:s.max,sl:0,d:s.d,...(s.fx&&s.fx.kind!=='none'?{fx:JSON.parse(JSON.stringify(s.fx))}:{})}))});fixRes(c);save();CW=null;$('#modal').innerHTML='';render();toast(`「${it.name}」 클래스를 장착했어요`);break}
+  case'cweqlib':{const it=customClassLib()[i];if(!it)break;if(!c){toast('먼저 캐릭터를 만들거나 선택해 주세요',1);break}if(c.classes.some(x=>x.name===it.name)){toast('이미 보유한 클래스예요',1);break}c.classes.push({name:it.name,...(it.bonus==='hp|mp'?{pick:'hp'}:{}),custom:true,bonus:it.bonus,free:[...(it.free||[])],info:it.info||'',heroic:it.heroic?JSON.parse(JSON.stringify(it.heroic)):null,heroics:it.heroics?JSON.parse(JSON.stringify(it.heroics)):(it.heroic?[JSON.parse(JSON.stringify(it.heroic))]:[]),spellSkill:it.spellSkill||'',classSpells:it.classSpells?JSON.parse(JSON.stringify(it.classSpells)):[],skills:it.skills.map(s=>({n:s.n,max:s.max,sl:0,d:s.d,...(s.fx&&s.fx.kind!=='none'?{fx:JSON.parse(JSON.stringify(s.fx))}:{})}))});fixRes(c);save();CW=null;$('#modal').innerHTML='';render();toast(`「${it.name}」 클래스를 장착했어요`);break}
   case'cwdellib':if(confirm('도감에서 이 커스텀 클래스를 지울까요?')){const lib=customClassLib();lib.splice(i,1);saveCustomClassLib(lib);if(CW&&CW.libIdx===i)CW.libIdx=null;renderCw()}break;
   case'cwimp':{const inp=document.createElement('input');inp.type='file';inp.accept='.json,application/json';inp.onchange=()=>{const f=inp.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const raw=JSON.parse(String(r.result||''));if(Array.isArray(raw)||Array.isArray(raw?.customClasses)){const arr=Array.isArray(raw)?raw:raw.customClasses,lib=customClassLib();let n=0;for(const x of arr)if(x?.name){const norm=cwToDef(cwBlank(x));const idx=lib.findIndex(z=>z.name===norm.name);if(idx>=0)lib[idx]=norm;else lib.push(norm);n++}saveCustomClassLib(lib);renderCw();toast(`커스텀 클래스 ${n}개를 도감에 불러왔어요`)}else{const d=raw?.cls||raw;if(!d?.name)throw new Error('bad');CW.d=cwBlank(d);CW.editCharIdx=null;CW.libIdx=null;CW.i=4;renderCw();toast(`「${CW.d.name}」을(를) 불러왔어요`)}}catch{toast('유효한 클래스 JSON 파일이 아니에요',1)}};r.readAsText(f)};inp.click();break}
   case'cwbonus':if(CW){CW.d.bonus=t.dataset.v;renderCw()}break;
@@ -4824,6 +4834,8 @@ document.addEventListener('click',async ev=>{const tb=ev.target.closest('[data-t
   case'cwaddsk':if(CW){if(CW.d.skills.length>=12){toast('스킬은 최대 12개예요',1);break}CW.d.skills.push({n:'새 스킬',max:5,kind:'패시브',fx:{kind:'none'},d:''});renderCw()}break;
   case'cwdelsk':if(CW){if(CW.d.skills.length<=1){toast('스킬은 최소 1개 이상 필요해요',1);break}CW.d.skills.splice(i,1);renderCw()}break;
   case'cwautofill':if(CW&&CW.d.skills[i]){const sk=CW.d.skills[i];sk.d=cwFxDesc(sk.fx,sk.max)||sk.d;renderCw()}break;
+  case'cwaddh':if(CW){CW.d.heroics=CW.d.heroics||[];CW.d.heroics.push({n:'',req:'',d:'',fx:{kind:'none'}});renderCw()}break;
+  case'cwdelh':if(CW&&CW.d.heroics){CW.d.heroics.splice(i,1);renderCw()}break;
   case'cwaddsp':if(CW){CW.d.spells.push({n:'',mp:10,tg:'생물 하나',du:'즉시',off:false,dmg:15,type:'화염',d:''});renderCw()}break;
   case'cwdelsp':if(CW){CW.d.spells.splice(i,1);renderCw()}break;
   case'cwexp':cwExport();break;
