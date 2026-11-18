@@ -3562,9 +3562,9 @@ const gearSkillKey=n=>{const k=String(n||'').split('(')[0].trim();return({'급�
 const gearRawSkill=(c,n)=>(c.classes||[]).flatMap(k=>k.skills||[]).filter(s=>gearSkillKey(s.n)===gearSkillKey(n)).reduce((v,s)=>v+(+s.sl||0),0);
 const gearSpeciesMatch=(text,species)=>{const names=({'구조물':['구조물','인공체'],'인공체':['구조물','인공체'],'괴물':['괴물','몬스터'],'몬스터':['괴물','몬스터']})[species]||[species];return names.some(n=>n&&text.includes(n))};
 function gearModule(id){const d=GEAR_CATALOG.find(x=>x.id===id&&x.kind==='modules');return d?{...d,name:d.n,gid:d.id,slot:d.moduleKind,martial:!!d.mil}:null}
-function gearVehicle(c){const v=c.vehicle||{};if(!v.driving||gearVehicleErrors(c).length)return null;return{...v,hands:(v.hands||[]).map(id=>{const m=gearModule(id);if(m&&v.dmg?.[id]!=null&&v.dmg[id]!=='')m.dmg=+v.dmg[id];return m}).filter(Boolean),armor:gearModule(v.armor),support:(v.support||[]).map(gearModule).filter(Boolean)}}
+function gearVehicle(c){const v=c.vehicle||{};if(!v.driving||gearVehicleErrors(c).length)return null;return{...v,hands:(v.hands||[]).map(id=>{const m=gearModule(id);if(m&&v.dmg?.[id]!=null&&v.dmg[id]!=='')m.dmg=+v.dmg[id];return m}),armor:gearModule(v.armor),support:(v.support||[]).map(gearModule).filter(Boolean)}}
 function effectiveEquip(c){const e=c.equip||{},v=gearVehicle(c);if(!v)return e;const a=v.armor;
- return{main:v.hands.length?(v.hands[0]?.moduleKind==='weapon'?v.hands[0]:null):e.main,off:v.hands.length?(v.hands[1]?.moduleKind==='weapon'?v.hands[1]:null):e.off,shield:v.hands.length?(v.hands.find(x=>x.moduleKind==='shield')||{}):e.shield,armor:a||e.armor||{},acc:e.acc}}
+ return{main:v.hands.some(Boolean)?(v.hands[0]?.moduleKind==='weapon'?v.hands[0]:null):e.main,off:v.hands.some(Boolean)?(v.hands[1]?.moduleKind==='weapon'?v.hands[1]:null):e.off,shield:v.hands.some(Boolean)?(v.hands.find(x=>x?.moduleKind==='shield')||{}):e.shield,armor:a||e.armor||{},acc:e.acc}}
 function effectiveGearItems(c){const e=effectiveEquip(c),v=gearVehicle(c);return Object.entries(e).filter(([,w])=>w?.name).map(([slot,w])=>({...w,slot,sp:w.sp||w.note||''})).concat(v?v.support.map((w,i)=>({...w,slot:'support:'+i})):[])}
 function gearText(c,w){const r=gearRecord(w);if(r&&r.src!=='CORE')return '';return w.sp||''}
 function gearAttr(c,k){return(k==='dex'&&gearHasName(c,'무희의 리본')?2:0)+(hsFx(c).die.has(k)?2:0)}
@@ -3617,7 +3617,7 @@ function gearVehicleErrors(c){const v=c.vehicle||{},h=(v.hands||[]).map(gearModu
  if(h.length>1&&h.some(x=>/다른 무기 모듈.*(?:활성화.*없|불가)/.test(x.sp)))errs.push('동시 활성화 불가 무기 모듈');
  if(v.frame==='군마'&&h.some(x=>x.moduleKind==='shield'))errs.push('스티드에는 방패 모듈을 쓸 수 없습니다');
  if(h.filter(x=>x.moduleKind==='shield').length>1)errs.push('방패 모듈 둘의 합산은 현재 직접 처리하세요');
- if(h[0]?.moduleKind==='shield'&&!gearRawSkill(c,'쌍방패지기')&&!gearRawSkill(c,'쌍방패 사용자'))errs.push('주손 방패에는 쌍방패 기술 필요');
+ if(gearModule((v.hands||[])[0])?.moduleKind==='shield'&&!gearRawSkill(c,'쌍방패지기')&&!gearRawSkill(c,'쌍방패 사용자'))errs.push('주손 방패에는 쌍방패 기술 필요');
  if(h.length+(v.armor?1:0)+sup.reduce((n,x)=>n+(x.weight||1),0)>3+sl)errs.push('전체 활성 모듈 한도 초과');return errs}
 
 for(const x of GEAR_CATALOG){if(['weapons','armor','shields','acc'].includes(x.kind)&&x.src!=='CORE')RULES[x.kind].push(x)}
@@ -3669,12 +3669,12 @@ const HS_CAP={'α':1,'β':2,'γ':3,'δ':4},HS_SLOTS=[['main','주무기'],['off'
 const hsKey=n=>String(n||'').replace(/ 호플로스피어$/,''),hsDef=n=>HS[hsKey(n)],hsSize=n=>hsDef(n)?.sz||1;
 const hsUsed=s=>(s||[]).reduce((a,n)=>a+hsSize(n),0);
 // the item a slot holds right now (riding a vehicle swaps hands/armor for modules → its spheres are idle)
-function hsHost(c,k){const it=(c.equip||{})[k],v=c.vehicle;if(!it?.name)return null;if(v?.driving&&(k==='armor'?v.armor:(v.hands||[]).length))return null;return it}// no effectiveEquip here: derive → spheres must not loop back through vehicle checks
+function hsHost(c,k){const it=(c.equip||{})[k],v=c.vehicle;if(!it?.name)return null;if(v?.driving){const g=gearVehicle(c);if(g&&(k==='armor'?g.armor:g.hands.some(Boolean)))return null}return it}// no effectiveEquip here: derive → spheres must not loop back through vehicle checks
 function hsIsWeapon(k,it){return k!=='armor'&&!!it?.cat&&it.cat!=='-'}
 function hsSlotFx(c,k){const h=c.hs?.[k],it=hsHost(c,k);if(!h?.s?.length||!it)return null;const w=hsIsWeapon(k,it),F={sp:[],hit:[],res:[],imm:[],ign:[],conv:[],st:[],die:[]};
   const cnt={};for(const n of h.s)if(hsDef(n))cnt[hsKey(n)]=(cnt[hsKey(n)]||0)+1;
   for(const[n,k2]of Object.entries(cnt)){const d=HS[n];if(d.w&&!w)continue;for(const[lv,fx]of[[1,d.b],[2,d.c2],[3,d.c3]]){if(!fx||k2<lv)continue;
-    for(const[x,v]of Object.entries(fx)){if(x==='wt'&&!w)continue;if(x==='sp')F.sp.push([v[0],v[1]*k2]);else if(Array.isArray(F[x]))F[x].push(v);else F[x]=(F[x]||0)+(typeof v==='number'?v*k2:0)||v}}}
+    for(const[x,v]of Object.entries(fx)){if(x==='wt'&&!w)continue;if(x==='sp')F.sp.push([v[0],v[1]*k2]);else if(Array.isArray(F[x]))F[x].push(v);else if(typeof v==='number')F[x]=x==='multi'?Math.max(F[x]||0,v):(F[x]||0)+v*k2;else F[x]=v}}}
   F.cnt=cnt;F.weapon=w;F.name=it.name;return F}
 function hsFx(c){const A={res:new Set,imm:new Set,ign:new Set,conv:new Set,st:new Set,die:new Set,def:0,mdef:0,init:0,hp:0,mp:0,pot:0,open:0,spell:0,slots:{}};if(!c?.hs)return A;
   for(const[k]of HS_SLOTS){const F=hsSlotFx(c,k);if(!F)continue;A.slots[k]=F;for(const x of['res','imm','ign','conv','st','die'])for(const v of F[x])A[x].add(v);for(const x of['def','mdef','init','hp','mp','pot','open','spell'])A[x]+=+F[x]||0}
@@ -4170,7 +4170,7 @@ function hsPanel(c){const S=GEAR_CATALOG.filter(x=>x.kind==='spheres'),sp=n=>S.f
     const cells=(h.s||[]).map((n,i)=>`<span class="hs-c" style="flex:${hsSize(n)}" title="${esc(sp(n))}"><b>${esc(hsKey(n))}</b>${F?.cnt?.[hsKey(n)]>1&&HS[hsKey(n)]?.c2?`<em>응결 ${Math.min(3,F.cnt[hsKey(n)])}</em>`:''}<button class="hs-x" data-act="hsx" data-k="${k}" data-i="${i}" aria-label="${esc(hsKey(n))} 빼기"><i class="gi" data-ic="minus"></i></button></span>`).join('')
       +M.map(m=>`<span class="hs-c mn${m._off?' off':''}" title="${esc(hsMSk(m).map(n=>n+' '+m.sk[n]).join(', '))}"><b>${esc(m.cls)}</b><em>Lv ${hsMLv(m)}${m._off?' · 꺼짐':''}</em><button class="hs-x" data-act="hsmx" data-k="${k}" data-id="${m.id}" aria-label="${esc(m.cls)} 므네모스피어 빼기"><i class="gi" data-ic="minus"></i></button></span>`).join('')
       +Array(Math.max(0,cap-used)).fill('<span class="hs-c empty">빈 칸</span>').join('');
-    const fit=S.filter(x=>(!x.weaponOnly||w)&&hsSize(x.n)<=cap-used);
+    const fit=S.filter(x=>(!x.weaponOnly||w)&&hsSize(x.n)<=cap-used&&!(w&&HS[hsKey(x.n)]?.b?.wt&&(h.s||[]).some(n=>HS[hsKey(n)]?.b?.wt&&hsKey(n)!==hsKey(x.n))));
     const mfit=used<cap&&M.length<(HS_MCAP[h.t]||1)?(c.mnemo||[]).filter(m=>!placed.has(m.id)&&hsMLv(m)>0&&!M.some(o=>hsMSk(o).some(n=>hsMSk(m).includes(n)))):[];
     return`<div class="hs-row"><div class="hs-h"><b>${l}</b><span class="muted">${esc(it.name)}</span><span class="sp"></span><select class="sel hs-t" data-hst="${k}" aria-label="${l} 슬롯 등급">${Object.keys(HS_CAP).filter(t=>t!=='δ'||w).map(t=>`<option value="${t}"${t===h.t?' selected':''}>${t} 슬롯 · ${HS_CAP[t]}칸${HS_MCAP[t]>1?` (므네모 ${HS_MCAP[t]})`:''}</option>`).join('')}</select></div>
      <div class="hs-cells">${cells}</div>
