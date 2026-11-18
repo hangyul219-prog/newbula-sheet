@@ -2915,6 +2915,7 @@ html[data-theme="metaphor"] .sheet-metaphor .meta-page-body .card>h3>span{color:
   <div class="brand"><small>Fabula Ultima</small><b>CHARACTER</b></div>
   <select class="tsel" id="pick" aria-label="캐릭터 선택"></select>
   <button class="tbtn red" data-act="wizard"><i class="gi" data-ic="spark"></i> 캐릭터 생성</button>
+      <button class="tbtn" id="cwbtn" data-act="clswiz"><i class="gi" data-ic="t-cls"></i> 클래스 생성기</button>
   <button class="tbtn" id="lvbtn" data-act="levelup"><i class="gi" data-ic="lvup"></i> 레벨업</button>
   <span class="sp"></span>
   <select class="tsel" id="themesel" aria-label="테마" title="UI 테마"><option value="metaphor">테마 · 메타포</option><option value="ff">테마 · 파이널 판타지</option><option value="octo">테마 · 옥토패스</option></select>
@@ -3441,12 +3442,12 @@ function rnGear(c){// 장비 기록을 새 목록과 맞춘다 — 목록에서 
   v.frame=RN.frame[v.frame]||v.frame;v.hands=(v.hands||[]).map(id=>ok(m(id))?m(id):'');v.armor=ok(m(v.armor))?m(v.armor):'';v.support=(v.support||[]).map(m).filter(ok)}}
 function migrateChar(c){if(!c||typeof c!=='object')return c;normalizeChar(c);
  const heroes=typeof RULES!=='undefined'?RULES.heroics:[];
- (c.classes||[]).forEach(k=>{k.name=RN.cls[k.name]||clsRn(k.name);const d=typeof CLASS!=='undefined'&&CLASS[k.name];if(!d)return;
+ (c.classes||[]).forEach(k=>{k.name=RN.cls[k.name]||clsRn(k.name);if(k.custom)return;const d=typeof CLASS!=='undefined'&&CLASS[k.name];if(!d)return;
   if(d.bonus==='hp|mp'&&!k.pick&&RN.oldBonus[k.name])k.pick=RN.oldBonus[k.name];
   k.skills=(k.skills||[]).filter(s=>{const n=rnSkill(k.name,s.n),def=d.skills.find(x=>x.n===n);if(!def)return false;s.n=n;s.max=def.max;s.d=def.d;s.sl=Math.min(+s.sl||0,def.max);return true})});
  (c.spells||[]).forEach(s=>{if(s.cls)s.cls=RN.cls[s.cls]||clsRn(s.cls);const lst=s.cls&&RULES.spells?.[s.cls];const r=lst&&lst.find(x=>x.n===s.n);if(r){s.tg=r.tg;s.du=r.du;s.d=r.d}});
  c.spells=(c.spells||[]).filter(s=>!(s.cls&&RULES.spells?.[s.cls]&&!RULES.spells[s.cls].some(x=>x.n===s.n)));
- c.heroics=(c.heroics||[]).map(h=>({...h,n:RN.heroic[h.n]||h.n})).filter(h=>heroes.some(x=>x.n===h.n));
+ c.heroics=(c.heroics||[]).map(h=>({...h,n:RN.heroic[h.n]||h.n})).filter(h=>h.custom||heroes.some(x=>x.n===h.n));
  if(c.quirk){c.quirk=RN.quirk[c.quirk]||c.quirk;if(!(RULES.quirks||[]).some(q=>q.key===c.quirk))c.quirk=''}
  const pk={};for(const [k,v] of Object.entries(c.picks||{})){const nk=Object.values(RN.skill).map(m=>m[k]).find(Boolean)||String(k).replace(RN_ENG,'').trim();if(!CHOICE_SK[nk])continue;
   const names=choiceList(nk).map(x=>x.n);pk[nk]=[...new Set((Array.isArray(v)?v:[]).map(n=>RN.pick[n]||n).filter(n=>names.includes(n)))]}c.picks=pk;
@@ -3459,14 +3460,14 @@ let _mig=0;function migrateAll(CH){let ch=false;for(const c of Object.values(CH|
 const HERO_ALIAS={};
 const heroName=n=>HERO_ALIAS[n]||n;
 const hasHero=(c,n)=>(c?.heroics||[]).some(h=>heroName(h.n)===n)||hsMnemoHeroes(c).includes(n);
-const heroDef=n=>RULES.heroics.find(h=>h.n===heroName(n));
+const heroDef=n=>RULES.heroics.find(h=>h.n===heroName(n))||(typeof customHeroics==='function'?customHeroics(typeof C==='function'?C():null):[]).find(h=>h.n===n);
 const heroScale=c=>(+c.level||0)>=40?10:5;
 const heroStatusCount=c=>Object.keys(STATUS).filter(s=>c.status?.[s]).length;
 const heroCheck=c=>hasHero(c,'역경')?heroStatusCount(c):0;
 const heroIP=(c,n)=>Math.max(n>0?1:0,n-(hasHero(c,'넉넉한 주머니')?1:0));
 const heroResist=(c,type,round)=>hasHero(c,'가시덤불 심장')&&['빛','독'].includes(type)||hasHero(c,'성벽')&&round===1;
 function hopliteActive(c){const eq=effectiveEquip(c);return hasHero(c,'호플리테스')&&!!eq.main?.name&&!!eq.shield?.name&&!eq.off?.name&&!gearRecord(eq.main)?.customDef&&!gearRawSkill(c,'쌍방패 사용자')&&!gearRawSkill(c,'쌍방패지기')}
-function heroDamage(c,kind,w,tgCount=1,multi=1){
+function heroDamage(c,kind,w,tgCount=1,multi=1){let _cfx=0;if(typeof customFxSum==='function'){if(kind==='atk')_cfx=customFxSum(c,'atkDmg',{melee:w?.range!=='원거리',ranged:w?.range==='원거리'});else if(kind==='spell')_cfx=customFxSum(c,'spellDmg');}
   let n=hasHero(c,'역경')?2*heroStatusCount(c):0;
   if(kind==='spell'&&hasHero(c,'강력한 주문'))n+=heroScale(c);
   if(kind==='atk'){
@@ -3517,7 +3518,7 @@ function heroDialog(cid,name,onDone,gear){
       const targets=selected.map(k=>({k,o:resolve(k),pc:k.startsWith('c:')})),multi=!!el.querySelector('#hero-multi')?.checked;
       let mp=number('cost'),hp=number('hpc'),fp=number('fpc'),dmg=number('dmg'),heal=number('heal'),mpr=number('mp');
       const step=actor.level>=40?10:actor.level>=20?5:0;
-      if(n==='백지화'){if(mp<5||mp>30||mp%5||!targets.length||targets.length>mp/5)return fail('MP 5~30을 5 단위로 쓰고, MP 5마다 대상 최대 1명을 고르세요.');}
+      if(n==='백지화'){if(mp<5||mp>30||mp%5||!targets.length||targets.length>mp/5)return (fail('MP 5~30을 5 단위로 쓰고, MP 5마다 대상 최대 1명을 고르세요.')+_cfx);}
       else if(n==='쪽잠'){if(targets.length&&!(targets.length===1&&targets[0].o===actor))return fail('자신에게만 사용할 수 있어요.');if(!targets.length)targets.push({k:'c:'+cid,o:actor,pc:true});heal=mpr=20+Math.floor(actor.level/2);}
       else if(!targets.length&&(!manual||dmg||heal||mpr||el.querySelector('#hero-status')?.value||el.querySelector('#hero-clear')?.checked))return fail('대상을 고르세요.');
       if(['혜성','화산','두뇌 방출'].includes(n)&&!multi&&targets.length!==1)return fail('단일 대상 모드에서는 1명만 고르세요.');
@@ -3631,7 +3632,7 @@ const gearTexts=c=>gearItems(c).map(w=>gearText(c,w));
 const gearHas=(c,re)=>gearTexts(c).some(s=>re.test(s));
 const canOneHand=(c,w)=>w?.hand!=='양손'||!gearRecord(w)?.custom&&hasHero(c,'괴력의 손아귀')&&['도리깨','중량','창','검'].includes(w.cat);
 const gearStatusNames={혼란:'dazed',동요:'shaken',둔화:'slow',약화:'weak',격노:'enraged',중독:'poisoned'};
-function resourceMax(c,type){const cl=c.classes||[],sl=n=>cl.flatMap(k=>k.skills||[]).filter(s=>s.n===n).reduce((a,s)=>a+(+s.sl||0),0)+hsMnemoSl(c,n),cnt=t=>cl.filter(k=>{const b=k.pick||CLASS[k.name]?.bonus;return(b==='hp|mp'?'hp':b)===t}).length;
+function resourceMax(c,type){const cl=c.classes||[],sl=n=>cl.flatMap(k=>k.skills||[]).filter(s=>s.n===n).reduce((a,s)=>a+(+s.sl||0),0)+hsMnemoSl(c,n),cnt=t=>cl.filter(k=>{const b=k.pick||k.bonus||(typeof clsDef==='function'?clsDef(k.name,k):CLASS[k.name])?.bonus;return(b==='hp|mp'?'hp':b)===t}).length;
  const ring=gearHas(c,/서로 다른 클래스 하나당 최대 체력과 최대 정신력이 2/)?new Set(cl.map(k=>k.name)).size*2:0;
  if(type==='hp')return Math.max(1,(+c.level||0)+5*(+c.attr.mig||0)+5*cnt('hp')+3*sl('요새')+(+c.bonus?.hp||0)+(hasHero(c,'추가 HP')?(c.level>=40?20:10):0)+ring+(gearHasName(c,'오리할콘')?10:0));
  return Math.max(0,(+c.level||0)+5*(+c.attr.wlp||0)+5*cnt('mp')+3*sl('집중')+(+c.bonus?.mp||0)+(hasHero(c,'추가 MP')?(c.level>=40?20:10):0)+ring);
@@ -3816,7 +3817,7 @@ function gearOnHit(actor,w,rows,kind,sourceText){const hit=rows.filter(r=>r.hit)
 }
 
 function derive(c){
-  const cl=c.classes||[];const cnt=t=>cl.filter(k=>{const b=k.pick||CLASS[k.name]?.bonus;return(b==='hp|mp'?'hp':b)===t}).length;// 'hp|mp' classes store the player's pick; unpicked counts as HP like the selector shows
+  const cl=c.classes||[];const cnt=t=>cl.filter(k=>{const b=k.pick||k.bonus||(typeof clsDef==='function'?clsDef(k.name,k):CLASS[k.name])?.bonus;return(b==='hp|mp'?'hp':b)===t}).length;// 'hp|mp' classes store the player's pick; unpicked counts as HP like the selector shows
   const sl=n=>gearSkill(c,n,cl.reduce((s,k)=>s+(k.skills||[]).filter(x=>x.n===n).reduce((a,x)=>a+(+x.sl||0),0),0)+hsMnemoSl(c,n));
   const b=c.bonus||{},eq=effectiveEquip(c),ar=eq.armor||{},sh=eq.shield||{};
   const cur=Object.fromEntries(Object.keys(ATTR).map(k=>[k,curDie(c,k)]));
@@ -3827,8 +3828,8 @@ function derive(c){
   const defBase=ar.base==='dex'||!ar.base?cur.dex:(+ar.base||0);
   const knife=hasHero(c,'칼날 숙련자')&&[eq.main,eq.off].some(w=>w?.name&&w.cat==='단검'&&w.range!=='원거리')?1:0;
   const hop=hopliteActive(c)?1:0;
-  let def=gearDefense(c,'def')+knife+hop+defBase+(+ar.def||0)+(+sh.def||0)+(+b.def||0)+dodge;
-  let mdef=gearDefense(c,'mdef')+knife+(ar.fixedMdef??cur.ins)+(+ar.mdef||0)+(+sh.mdef||0)+(+b.mdef||0);
+  let def=gearDefense(c,'def')+knife+hop+defBase+(+ar.def||0)+(+sh.def||0)+(+b.def||0)+dodge+(typeof customFxSum==='function'?customFxSum(c,'defBonus'):0);
+  let mdef=gearDefense(c,'mdef')+knife+(ar.fixedMdef??cur.ins)+(+ar.mdef||0)+(+sh.mdef||0)+(+b.mdef||0)+(typeof customFxSum==='function'?customFxSum(c,'mdefBonus'):0);
   for(const p of Object.values(CH)){const gv=gearVehicle(p);if(gv&&gv.support.some(m=>m.n==='확장 장갑')&&(p.vehicle?.passengers||[]).includes(c.id)&&['중장갑','룬 장갑','표준 장갑'].includes(gv.armor?.n)){def=Math.max(def,(+gv.armor.base||0)+(+gv.armor.def||0));mdef=Math.max(mdef,+gv.armor.fixedMdef||0)}}
   const init=gearInitiative(c)+(hasHero(c,'슬로모션')?sl('회피')+sl('훔친 시간'):0)+(+ar.init||0)+(+b.init||0);
   const clsLv=cl.reduce((s,k)=>s+(k.skills||[]).reduce((a,x)=>a+(+x.sl||0),0),0);
@@ -3860,15 +3861,347 @@ function save(now){const c=C();if(c)c.updated=Date.now();clearTimeout(saveT);con
 function setP(o,p,v){const ks=p.split('.');let a=o;for(let i=0;i<ks.length-1;i++){a=a[ks[i]]??=(/^\d+$/.test(ks[i+1])?[]:{})}a[ks.at(-1)]=v}
 // martial gear is unlocked by a class's free benefits (works for supplement classes too)
 const MARTIAL_RE={melee:/(군용|무예|전투) 근접 무기/,ranged:/(군용|무예|전투) 원거리 무기/,armor:/(군용|무예|전투) (방어구|갑옷)/,shield:/(군용|무예|전투) 방패/}// the High Fantasy translation says 무예 for martial;
-const allowed=(c,k)=>(c.classes||[]).some(x=>MARTIAL_RE[k].test((CLASS[x.name]?.free||[]).join(' ')));
-const SRCN={CORE:'코어 룰북',HF:'하이 판타지',NF:'내추럴 판타지',TF:'테크노 판타지'};
+const allowed=(c,k)=>(c.classes||[]).some(x=>MARTIAL_RE[k].test(((typeof clsDef==='function'?clsDef(x.name,x)?.free:null)||x.free||CLASS[x.name]?.free||[]).join(' ')));
+const SRCN={CORE:'코어 룰북',HF:'하이 판타지',NF:'내추럴 판타지',TF:'테크노 판타지',CUSTOM:'직접 제작'};
 // quirks are stored as "SRC|name" because names repeat across atlases (e.g. 로봇)
 const quirkOf=k=>{if(!k)return null;const[s,n]=k.includes('|')?k.split('|'):[null,k];return RULES.quirks.find(q=>q.n===n&&(!s||q.src===s))||null};
 const quirkSel=(attr,v)=>`<select class="sel" ${attr} style="width:auto"><option value="">없음</option>${bySrc(RULES.quirks,(s,l)=>`<optgroup label="${SRCN[s]} ${s==='HF'?'기벽':'변칙'}">${l.map(q=>`<option value="${esc(q.key)}"${(v===q.key||v===q.n&&quirkOf(v)===q)?' selected':''}>${esc(q.n)}</option>`).join('')}</optgroup>`)}</select>`;
 const BLAB=b=>({hp:'HP +5',mp:'MP +5',ip:'IP +2','hp|mp':'HP 또는 MP +5'}[b]||'—');
+/* CUSTOM_CLASS_GENERATOR_START */
+/* ================= custom class generator (시트 & 생성 마법사 & 도감) ================= */
+const CW_RES={hp:'최대 체력이 영구적으로 5 증가합니다.',mp:'최대 정신력이 영구적으로 5 증가합니다.',ip:'최대 소지 점수가 영구적으로 2 증가합니다.','hp|mp':'최대 체력 또는 최대 정신력이 영구적으로 5 증가합니다 (선택).','':''};
+const CW_GRANTS=[
+  ['melee','군용 근접 무기','군용 근접 무기를 장비할 수 있습니다.'],
+  ['ranged','군용 원거리 무기','군용 원거리 무기를 장비할 수 있습니다.'],
+  ['armor','군용 방어구','군용 방어구를 장비할 수 있습니다.'],
+  ['shield','군용 방패','군용 방패를 장비할 수 있습니다.'],
+  ['ritual','의식술 사용','캠페인에서 의식을 사용할 수 있습니다.']
+];
+const CW_FX_LIST=[
+  ['none','직접 서술 (효과 텍스트)'],
+  ['atkDmg','공격 추가 피해 (+SL×N)'],
+  ['atkAcc','공격 명중 보너스 (+SL×N)'],
+  ['spellDmg','공격 주문 피해 (+SL×N)'],
+  ['healBonus','회복량 보너스 (+SL×N)'],
+  ['defBonus','방어도 보너스 (+SL×N)'],
+  ['mdefBonus','마법 방어도 보너스 (+SL×N)'],
+  ['activeDmg','[행동] 적에게 피해 (MP 소모)'],
+  ['activeHeal','[행동] 아군 HP/MP 회복 (MP 소모)'],
+  ['activeStatus','[행동] 적 상태 이상 부여 (MP 소모)'],
+  ['activeBuff','[행동] 아군 다음 턴까지 강화 (MP 소모)']
+];
+const customClassLib=()=>{try{const L=LS.get('fu.customClasses',[]);return Array.isArray(L)?L:[]}catch(e){return[]}};
+const saveCustomClassLib=L=>LS.set('fu.customClasses',Array.isArray(L)?L:[]);
+const allClasses=()=>{const lib=customClassLib();return[...CLASSES,...lib.filter(x=>!CLASS[x.name]).map(x=>({...x,src:'CUSTOM',custom:true}))]};
+const clsDef=(name,own)=>own?.custom?own:(customClassLib().find(x=>x.name===name)||CLASS[name]||own||null);
+function customHeroics(c){
+  const seen=new Set(RULES.heroics.map(h=>h.n)),out=[];
+  for(const src of [c?.classes||[],customClassLib()]){
+    for(const k of src){const h=k?.heroic;if(h?.n&&!seen.has(h.n)){seen.add(h.n);out.push({...h,src:'CUSTOM',custom:true,req:h.req||`${k.name} 마스터`})}}
+  }
+  return out;
+}
+function customFxSum(c,kind){
+  let n=0;
+  for(const k of c?.classes||[])for(const s of k.skills||[])if((+s.sl||0)>0&&s.fx?.kind===kind)n+=(+s.fx.val||0)+(+s.fx.perSl||0)*(+s.sl||0);
+  for(const h of c?.heroics||[]){const hd=heroDef(h.n);if(hd?.fx?.kind===kind)n+=(+hd.fx.val||0)+(+hd.fx.perSl||0)}
+  return n;
+}
+function customSpellSkillMap(c){
+  const m={...SPELL_SKILL};
+  for(const k of allClasses())if(k.spellSkill)m[k.name]=k.spellSkill;
+  for(const k of c?.classes||[])if(k.spellSkill)m[k.name]=k.spellSkill;
+  return m;
+}
+function customSpellList(cls,c){
+  if(RULES.spells[cls])return RULES.spells[cls];
+  const d=clsDef(cls,(c?.classes||[]).find(k=>k.name===cls));
+  return d?.classSpells||d?.spells||[];
+}
+function cwBuildFree(d){
+  const out=[];
+  if(d.grants?.length){for(const[k,,txt]of CW_GRANTS)if(d.grants.includes(k))out.push(txt)}
+  if(d.extraFree?.trim())out.push(d.extraFree.trim());
+  if(CW_RES[d.bonus])out.push(CW_RES[d.bonus]);
+  return out;
+}
+function cwFxDesc(fx,max=5){
+  if(!fx||fx.kind==='none')return'';
+  const sl=fx.perSl?`SL × ${fx.perSl}`:'',val=fx.val?`${fx.val}`:'';
+  const amt=[val,sl].filter(Boolean).join(' + ')||'1';
+  const cond={all:'',melee:'근접 무기로 ',ranged:'원거리 무기로 ',crisis:'위기 상태인 동안 '}[fx.cond||'all']||'';
+  if(fx.kind==='atkDmg')return`${cond}무기 공격으로 주는 피해가 ${amt} 증가합니다.`;
+  if(fx.kind==='atkAcc')return`${cond}공격의 명중 판정에 +${amt} 보너스를 얻습니다.`;
+  if(fx.kind==='spellDmg')return`공격 주문으로 주는 피해가 ${amt} 증가합니다.`;
+  if(fx.kind==='healBonus')return`주문이나 소지품으로 회복시키는 HP/MP가 ${amt} 증가합니다.`;
+  if(fx.kind==='defBonus')return`방어도가 영구적으로 ${amt} 증가합니다.`;
+  if(fx.kind==='mdefBonus')return`마법 방어도가 영구적으로 ${amt} 증가합니다.`;
+  const mp=fx.mp?`MP ${fx.mp}`:'MP 소모 없이',tg=fx.tgt==='all_foes'?'모든 적':fx.tgt==='all_allies'?'모든 아군':fx.tgt==='ally'?'아군 하나':'적 하나';
+  if(fx.kind==='activeDmg')return`행동 하나와 ${mp}를 써서 ${tg}에게 ${amt} ${fx.type||'물리'} 피해를 줍니다.`;
+  if(fx.kind==='activeHeal')return`행동 하나와 ${mp}를 써서 ${tg}의 ${fx.res==='mp'?'MP':'HP'}를 ${amt} 회복시킵니다.`;
+  if(fx.kind==='activeStatus')return`행동 하나와 ${mp}를 써서 ${tg}에게 ${STATUS[fx.st||'dazed']?.[0]||'혼란'} 상태를 겁니다.`;
+  if(fx.kind==='activeBuff')return`행동 하나와 ${mp}를 써서 ${tg}에게 다음 턴까지 ${fx.buff==='resist'?`${fx.ty||'화염'} 저항`:`모든 피해 +${amt}`} 효과를 줍니다.`;
+  return'';
+}
+const CW_TPLS=[
+  {key:'guard',n:'수호성기사',sub:'전위 · 탱커',info:'단단한 방패와 성스러운 결계로 동료를 지키는 전위 수호자입니다.',bonus:'hp',grants:['melee','armor','shield'],spellSkill:'',spells:[],
+   skills:[
+     {n:'성채의 결계',max:3,kind:'패시브',fx:{kind:'defBonus',val:0,perSl:1},d:'방어도가 영구적으로 SL만큼 증가합니다.'},
+     {n:'수호자의 일격',max:5,kind:'패시브',fx:{kind:'atkDmg',val:0,perSl:2,cond:'melee'},d:'근접 무기로 하는 공격이 SL × 2만큼 추가 피해를 줍니다.'},
+     {n:'결의의 방어술',max:3,kind:'패시브',fx:{kind:'mdefBonus',val:0,perSl:1},d:'마법 방어도가 영구적으로 SL만큼 증가합니다.'},
+     {n:'성광 베기',max:5,kind:'행동',fx:{kind:'activeDmg',mp:10,val:10,perSl:5,type:'빛',tgt:'foe'},d:'행동 하나와 MP 10을 써서 적 하나에게 10 + SL × 5 빛 피해를 줍니다.'},
+     {n:'신성한 축복',max:3,kind:'행동',fx:{kind:'activeHeal',mp:10,res:'hp',val:10,perSl:10,tgt:'ally'},d:'행동 하나와 MP 10을 써서 아군 하나의 HP를 10 + SL × 10 회복시킵니다.'}
+   ],
+   heroic:{n:'불굴의 성광',req:'수호성기사 마스터',fx:{kind:'defBonus',val:2,perSl:0},d:'방어도가 영구적으로 2 증가합니다. 위기 상태일 때는 모든 피해에 저항을 얻습니다 (서사/GM 확인).'}},
+  {key:'blade',n:'검무자',sub:'근접 · 연격 딜러',info:'화려한 보법과 예리한 검기로 전장을 가르는 근접 공격수입니다.',bonus:'hp',grants:['melee'],spellSkill:'',spells:[],
+   skills:[
+     {n:'예리한 검로',max:5,kind:'패시브',fx:{kind:'atkAcc',val:0,perSl:1,cond:'melee'},d:'근접 무기로 하는 공격의 명중 판정에 +SL 보너스를 얻습니다.'},
+     {n:'필살 검격',max:5,kind:'패시브',fx:{kind:'atkDmg',val:0,perSl:2,cond:'melee'},d:'근접 무기로 하는 공격이 SL × 2만큼 추가 피해를 줍니다.'},
+     {n:'연격의 흐름',max:5,kind:'행동',fx:{kind:'activeDmg',mp:10,val:5,perSl:5,type:'물리',tgt:'foe'},d:'행동 하나와 MP 10을 써서 적 하나에게 5 + SL × 5 물리 피해를 줍니다.'},
+     {n:'기민한 보법',max:3,kind:'패시브',fx:{kind:'defBonus',val:0,perSl:1},d:'방어도가 영구적으로 SL만큼 증가합니다.'},
+     {n:'혼란 베기',max:1,kind:'행동',fx:{kind:'activeStatus',mp:5,st:'dazed',tgt:'foe'},d:'행동 하나와 MP 5를 써서 적 하나에게 혼란 상태를 겁니다.'}
+   ],
+   heroic:{n:'섬광난무',req:'검무자 마스터',fx:{kind:'atkDmg',val:5,perSl:0,cond:'melee'},d:'근접 무기로 하는 공격이 추가 피해 5를 줍니다.'}},
+  {key:'sniper',n:'마탄사수',sub:'원거리 · 저격/견제',info:'정밀한 사격과 특수 탄환으로 적의 진형을 무너뜨리는 사수입니다.',bonus:'ip',grants:['ranged'],spellSkill:'',spells:[],
+   skills:[
+     {n:'정밀 조준',max:5,kind:'패시브',fx:{kind:'atkAcc',val:0,perSl:1,cond:'ranged'},d:'원거리 무기로 하는 공격의 명중 판정에 +SL 보너스를 얻습니다.'},
+     {n:'관통 사격',max:5,kind:'패시브',fx:{kind:'atkDmg',val:0,perSl:2,cond:'ranged'},d:'원거리 무기로 하는 공격이 SL × 2만큼 추가 피해를 줍니다.'},
+     {n:'둔화 탄환',max:1,kind:'행동',fx:{kind:'activeStatus',mp:5,st:'slow',tgt:'foe'},d:'행동 하나와 MP 5를 써서 적 하나에게 둔화 상태를 겁니다.'},
+     {n:'속성 탄창',max:5,kind:'행동',fx:{kind:'activeDmg',mp:10,val:10,perSl:5,type:'번개',tgt:'foe'},d:'행동 하나와 MP 10을 써서 적 하나에게 10 + SL × 5 번개 피해를 줍니다.'},
+     {n:'전장 응급 탄',max:3,kind:'행동',fx:{kind:'activeHeal',mp:10,res:'hp',val:10,perSl:5,tgt:'ally'},d:'행동 하나와 MP 10을 써서 아군 하나의 HP를 10 + SL × 5 회복시킵니다.'}
+   ],
+   heroic:{n:'절대 명중',req:'마탄사수 마스터',fx:{kind:'atkDmg',val:5,perSl:0,cond:'ranged'},d:'원거리 무기로 하는 공격이 추가 피해 5를 줍니다.'}},
+  {key:'mage',n:'별빛술사',sub:'마법 · 공격 주문',info:'성좌의 마력을 끌어와 적을 불태우고 아군에게 가호를 내리는 마술사입니다.',bonus:'mp',grants:['ritual'],spellSkill:'성좌 마법',
+   spells:[
+     {n:'유성탄',mp:10,tg:'생물 하나',du:'즉시',off:true,a1:'ins',a2:'wlp',dmg:15,type:'화염',d:'화염 피해 HR + 15를 줍니다.'},
+     {n:'별빛 쇄도',mp:20,tg:'최대 3명',du:'즉시',off:true,a1:'ins',a2:'wlp',dmg:10,type:'빛',d:'대상에게 빛 피해 HR + 10을 줍니다.'},
+     {n:'성좌의 수호',mp:10,tg:'생물 하나',du:'장면',off:false,d:'대상이 다음 턴까지 빛 피해에 저항을 얻습니다.'}
+   ],
+   skills:[
+     {n:'성좌 마법',max:10,kind:'행동',fx:{kind:'none'},d:'SL마다 별빛술사 주문을 하나씩 배웁니다.'},
+     {n:'마력 증폭',max:5,kind:'패시브',fx:{kind:'spellDmg',val:0,perSl:2},d:'공격 주문으로 주는 피해가 SL × 2 증가합니다.'},
+     {n:'성좌의 외투',max:3,kind:'패시브',fx:{kind:'mdefBonus',val:0,perSl:1},d:'마법 방어도가 영구적으로 SL만큼 증가합니다.'},
+     {n:'유성 낙하',max:5,kind:'행동',fx:{kind:'activeDmg',mp:15,val:15,perSl:5,type:'화염',tgt:'all_foes'},d:'행동 하나와 MP 15를 써서 모든 적에게 15 + SL × 5 화염 피해를 줍니다.'},
+     {n:'에테르 회수',max:3,kind:'행동',fx:{kind:'activeHeal',mp:0,res:'mp',val:10,perSl:5,tgt:'ally'},d:'행동 하나로 아군 하나의 MP를 10 + SL × 5 회복시킵니다.'}
+   ],
+   heroic:{n:'초신성 마력',req:'별빛술사 마스터',fx:{kind:'spellDmg',val:5,perSl:0},d:'공격 주문이 추가 피해 5를 줍니다.'}},
+  {key:'saint',n:'치유현자',sub:'회복 · 지원 마법',info:'생명력과 정화의 기운으로 파티를 떠받치는 지원가입니다.',bonus:'mp',grants:['ritual'],spellSkill:'치유 마법',
+   spells:[
+     {n:'재생의 빛',mp:10,tg:'생물 하나',du:'즉시',off:false,d:'대상은 체력 40을 회복합니다.'},
+     {n:'신속 기도',mp:15,tg:'최대 3명',du:'즉시',off:false,d:'대상들의 체력을 30 회복합니다.'},
+     {n:'축복의 진',mp:10,tg:'생물 하나',du:'장면',off:false,d:'대상의 아군을 지키는 기도.'}
+   ],
+   skills:[
+     {n:'치유 마법',max:10,kind:'행동',fx:{kind:'none'},d:'SL마다 치유현자 주문을 하나씩 배웁니다.'},
+     {n:'풍요로운 은총',max:5,kind:'패시브',fx:{kind:'healBonus',val:0,perSl:5},d:'주문이나 소지품으로 회복시키는 HP/MP가 SL × 5 증가합니다.'},
+     {n:'청정한 기운',max:3,kind:'패시브',fx:{kind:'mdefBonus',val:0,perSl:1},d:'마법 방어도가 영구적으로 SL만큼 증가합니다.'},
+     {n:'치유의 성가',max:5,kind:'행동',fx:{kind:'activeHeal',mp:15,res:'hp',val:15,perSl:5,tgt:'all_allies'},d:'행동 하나와 MP 15를 써서 모든 아군의 HP를 15 + SL × 5 회복시킵니다.'},
+     {n:'수호의 축성',max:3,kind:'행동',fx:{kind:'activeBuff',mp:10,buff:'dmg+',perSl:3,val:0},d:'행동 하나와 MP 10을 써서 아군 하나에게 다음 턴까지 피해 +SL × 3 버프를 줍니다.'}
+   ],
+   heroic:{n:'기적의 숨결',req:'치유현자 마스터',fx:{kind:'healBonus',val:10,perSl:0},d:'주문·소지품 회복량이 10 증가합니다.'}},
+  {key:'tactician',n:'책략가',sub:'전략 · 방해/버프',info:'약점을 꿰뚫고 적을 교란하며 아군의 승기를 끌어내는 지휘관입니다.',bonus:'hp|mp',grants:['ranged'],spellSkill:'',spells:[],
+   skills:[
+     {n:'약점 간파',max:5,kind:'패시브',fx:{kind:'atkAcc',val:0,perSl:1,cond:'all'},d:'무기 공격의 명중 판정에 +SL 보너스를 얻습니다.'},
+     {n:'결정적 지시',max:5,kind:'행동',fx:{kind:'activeBuff',mp:10,buff:'dmg+',perSl:3,val:0},d:'행동 하나와 MP 10을 써서 아군 하나에게 다음 턴까지 모든 피해 +SL × 3 효과를 줍니다.'},
+     {n:'교란 책동',max:1,kind:'행동',fx:{kind:'activeStatus',mp:5,st:'shaken',tgt:'foe'},d:'행동 하나와 MP 5를 써서 적 하나에게 동요 상태를 겁니다.'},
+     {n:'허점 강타',max:5,kind:'패시브',fx:{kind:'atkDmg',val:0,perSl:2,cond:'crisis'},d:'위기 상태인 동안 공격 피해가 SL × 2 증가합니다.'},
+     {n:'기습 포격',max:5,kind:'행동',fx:{kind:'activeDmg',mp:10,val:10,perSl:5,type:'바람',tgt:'foe'},d:'행동 하나와 MP 10을 써서 적 하나에게 10 + SL × 5 바람 피해를 줍니다.'}
+   ],
+   heroic:{n:'완벽한 책략',req:'책략가 마스터',fx:{kind:'atkAcc',val:2,perSl:0,cond:'all'},d:'무기 공격 명중 판정에 영구적으로 +2 보너스를 얻습니다.'}}
+];
+function cwRand(){
+  const pre=['창공','황혼','심연','성휘','태엽','서리','뇌명','홍련','백은','영겁','흑야','비취','화룡','월광'];
+  const role=['기사','검사','마술사','현자','사수','기공사','수호자','무희','사제','추적자','전략가','연금사'];
+  const base=JSON.parse(JSON.stringify(CW_TPLS[Math.floor(Math.random()*CW_TPLS.length)]));
+  const ty=['화염','냉기','번개','바람','대지','빛','어둠'][Math.floor(Math.random()*7)];
+  const st=['dazed','shaken','slow','weak','poisoned','enraged'][Math.floor(Math.random()*6)];
+  const name=pre[Math.floor(Math.random()*pre.length)]+' '+role[Math.floor(Math.random()*role.length)];
+  base.name=name;base.n=name;base.info=`${ty}의 기운과 독자적 전술을 다루는 창작 클래스 ${name}입니다.`;
+  for(const s of base.skills){
+    if(s.fx?.kind==='activeDmg'){s.fx.type=ty;s.d=cwFxDesc(s.fx,s.max)}
+    if(s.fx?.kind==='activeStatus'){s.fx.st=st;s.d=cwFxDesc(s.fx,s.max)}
+  }
+  if(base.heroic)base.heroic.req=`${name} 마스터`;
+  return base;
+}
+
+let CW=null;
+const CW_STEPS=['tpl','base','skills','extra','preview'];
+const CW_STEPN={tpl:'초안 · 도감',base:'이름 · 무료 혜택',skills:'스킬 설계',extra:'영웅 · 주문',preview:'완성 · 저장'};
+function cwBlank(tpl){
+  const t=tpl?JSON.parse(JSON.stringify(tpl)):{
+    name:'',info:'',bonus:'hp',grants:[],extraFree:'',spellSkill:'',spells:[],
+    skills:Array.from({length:5},(_,i)=>({n:`스킬 ${i+1}`,max:i===0?3:5,kind:i<2?'패시브':'행동',fx:{kind:'none'},d:''})),
+    heroic:{n:'',req:'',d:'',fx:{kind:'none'}}
+  };
+  const d={name:t.name||t.n||'',info:t.info||'',bonus:t.bonus??'hp',grants:t.grants?[...t.grants]:CW_GRANTS.filter(([k])=>new RegExp(k==='melee'?'근접 무기':k==='ranged'?'원거리 무기':k==='armor'?'방어구':k==='shield'?'방패':'의식').test((t.free||[]).join(' '))).map(([k])=>k),
+    extraFree:t.extraFree||'',spellSkill:t.spellSkill||'',spells:(t.spells||t.classSpells||[]).map(x=>({...x})),
+    hasSpells:!!(t.spellSkill||(t.spells||t.classSpells||[]).length),
+    skills:(t.skills||[]).map(s=>({n:s.n||'',max:+s.max||1,kind:s.kind||'패시브',fx:s.fx?{...s.fx}:{kind:'none'},d:s.d||''})),
+    heroic:t.heroic?{n:t.heroic.n||'',req:t.heroic.req||'',d:t.heroic.d||'',fx:t.heroic.fx?{...t.heroic.fx}:{kind:'none'}}:{n:'',req:'',d:'',fx:{kind:'none'}}};
+  if(!d.skills.length)d.skills.push({n:'기본 스킬',max:5,kind:'패시브',fx:{kind:'none'},d:''});
+  return d;
+}
+function cwStart(opts={}){
+  let d=cwBlank();let editCharIdx=opts.charIdx??null;let libIdx=opts.libIdx??null;
+  if(editCharIdx!=null&&C()?.classes[editCharIdx]){
+    const k=C().classes[editCharIdx];
+    d=cwBlank({...clsDef(k.name,k),...k,n:k.name});
+  }else if(libIdx!=null&&customClassLib()[libIdx]){
+    d=cwBlank(customClassLib()[libIdx]);
+  }
+  CW={i:editCharIdx!=null||libIdx!=null?1:0,editCharIdx,libIdx,d};
+  renderCw();
+}
+function cwValid(st){
+  if(!CW)return false;
+  const d=CW.d;
+  if(st==='base')return!!d.name.trim();
+  if(st==='skills')return d.skills.length>=1&&d.skills.every(s=>s.n.trim()&&+s.max>=1);
+  if(st==='preview')return!!d.name.trim()&&d.skills.length>=1&&d.skills.every(s=>s.n.trim());
+  return true;
+}
+function cwToDef(d){
+  const free=cwBuildFree(d);
+  const name=d.name.trim();
+  return{
+    name,src:'CUSTOM',custom:true,info:d.info.trim(),bonus:d.bonus||'',free,
+    spellSkill:d.hasSpells?(d.spellSkill.trim()||`${name} 마법`):'',
+    classSpells:d.hasSpells?d.spells.filter(x=>x.n.trim()).map(x=>({...x,n:x.n.trim(),mp:mpNum(x.mp)||10,mpTxt:String(x.mp||10)})):[],
+    skills:d.skills.map(s=>({n:s.n.trim()||'스킬',max:clamp(+s.max||1,1,10),kind:s.kind||'패시브',fx:s.fx?{...s.fx}:{kind:'none'},d:(s.d||'').trim()})),
+    heroic:d.heroic?.n?.trim()?{n:d.heroic.n.trim(),req:(d.heroic.req||`${name} 마스터`).trim(),d:(d.heroic.d||'').trim(),fx:d.heroic.fx?{...d.heroic.fx}:{kind:'none'},custom:true}:null
+  };
+}
+function cwSave(equipOnChar){
+  if(!CW||!cwValid('preview'))return toast('클래스 이름과 스킬을 확인해 주세요',1);
+  const def=cwToDef(CW.d),lib=customClassLib();
+  const idx=CW.libIdx!=null?CW.libIdx:lib.findIndex(x=>x.name===def.name);
+  if(idx>=0)lib[idx]=def;else lib.push(def);
+  saveCustomClassLib(lib);
+  const c=C();
+  if(equipOnChar&&c){
+    const prev=CW.editCharIdx!=null?c.classes[CW.editCharIdx]:c.classes.find(x=>x.name===def.name);
+    const oldSl=n=>prev?.skills?.find(x=>x.n===n)?.sl||0;
+    const entry={name:def.name,custom:true,src:'CUSTOM',bonus:def.bonus,pick:def.bonus==='hp|mp'?(prev?.pick||'hp'):undefined,free:def.free,info:def.info,spellSkill:def.spellSkill,classSpells:def.classSpells,heroic:def.heroic,
+      skills:def.skills.map(s=>({n:s.n,max:s.max,sl:Math.min(oldSl(s.n),s.max),kind:s.kind,fx:s.fx,d:s.d}))};
+    if(CW.editCharIdx!=null)c.classes[CW.editCharIdx]=entry;
+    else if(prev)Object.assign(prev,entry);
+    else c.classes.push(entry);
+    save(1);toast(`「${def.name}」 저장 및 장착 완료`);
+  }else{
+    toast(`「${def.name}」 도감에 저장했어요`);
+  }
+  CW=null;$('#modal').innerHTML='';render();
+}
+function cwExport(){
+  if(!CW||!cwValid('preview'))return toast('클래스 이름과 스킬을 먼저 입력하세요',1);
+  const def=cwToDef(CW.d);
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify({fabulaClass:1,cls:def},null,2)],{type:'application/json'}));
+  a.download=`${def.name}.fuclass.json`;a.click();
+}
+function renderCw(){
+  if(!CW){$('#modal').innerHTML='';return}
+  const fresh=!$('#modal .wiz'),st=CW_STEPS[CW.i];
+  const canEq=!!C();
+  $('#modal').innerHTML=`<div class="wiz cw"${fresh?'':' style="animation:none"'}><aside class="wrail"><div class="wt"><small>CLASS GENERATOR</small><b>클래스 생성기</b></div>
+   ${CW_STEPS.map((s,i)=>`<div class="wstep${i===CW.i?' on':i<CW.i?' done':''}" style="cursor:pointer" data-act="cwgo" data-i="${i}"><i><span>${i<CW.i?'✓':i+1}</span></i>${CW_STEPN[s]}</div>`).join('')}</aside>
+   <section class="wmain">${cwBody(st)}
+   <div class="wf"><button class="wbtn" data-act="cwcancel">닫기</button><span class="sp"></span>${CW.i?'<button class="wbtn" data-act="cwprev">이전</button>':''}
+   ${CW.i<CW_STEPS.length-1?`<button class="wbtn go" data-act="cwnext" ${cwValid(st)?'':'disabled'}>다음 <i class="gi" data-ic="play"></i></button>`:
+   `<button class="wbtn" data-act="cwsave">도감에만 저장</button>${canEq?`<button class="wbtn fin" data-act="cwapply" ${cwValid('preview')?'':'disabled'}><i class="gi" data-ic="spark"></i> 저장 · 캐릭터에 장착</button>`:''}`}</div></section></div>`;
+}
+function cwBody(st){
+  const n=CW.i+1,d=CW.d,h=(t,p)=>`<div class="wh"><small>STEP ${n} · ${CW_STEPN[st]}</small><h2>${t}</h2><p>${p}</p></div>`;
+  const lib=customClassLib();
+  if(st==='tpl')return h('어떻게 클래스를 만들까요?','역할군 템플릿·랜덤 추천으로 초안을 바로 만들거나, 백지·도감에서 시작할 수 있어요.')+`<div class="wb">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <button class="btn pri" data-act="cwrand"><i class="gi" data-ic="dice"></i> 랜덤 클래스 초안 생성</button>
+      <button class="btn" data-act="cwblank">백지부터 직접 만들기</button>
+      <button class="btn" data-act="cwimp">JSON 불러오기</button>
+    </div>
+    <div class="wsrc">역할 프리셋 (파뷸라 울티마 표준 균형)</div>
+    <div class="wgrid">${CW_TPLS.map((t,i)=>`<button class="wc${d.name===t.n?' on':''}" data-act="cwtpl" data-i="${i}"><span class="k">${t.sub} · ${BLAB(t.bonus)}</span><b>${t.n}</b><p>${esc(t.info)}</p></button>`).join('')}</div>
+    ${lib.length?`<div class="wsrc" style="margin-top:18px">저장된 커스텀 클래스 도감 (${lib.length})</div><div class="wgrid">${lib.map((x,i)=>`<div class="wc cw-lib"><span class="k">CUSTOM · ${BLAB(x.bonus)}</span><b>${esc(x.name)}</b><p>${esc(x.info||(x.free||[]).join(' '))}</p><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="btn sm pri" data-act="cwloadlib" data-i="${i}">수정</button>${C()?`<button class="btn sm" data-act="cweqlib" data-i="${i}">장착</button>`:''}<button class="btn sm x" data-act="cwdellib" data-i="${i}">삭제</button></div></div>`).join('')}</div>`:''}
+  </div>`;
+  if(st==='base')return h('이름과 무료 혜택','클래스 이름, 영구 자원 보너스(1개 권장), 장비·의식 자격을 정하세요.')+`<div class="wb">
+    <div class="cw-box"><div class="row"><label class="f" style="flex:1">클래스 이름 *<input class="in" data-cw="name" value="${esc(d.name)}" placeholder="예: 성기사, 시간술사"></label><label class="f" style="flex:2">한 줄 소개<input class="in" data-cw="info" value="${esc(d.info)}" placeholder="예: 시간과 운명을 조율하는 신비한 마술사"></label></div></div>
+    <div class="cw-box"><div class="sub" style="margin-top:0">영구 자원 보너스 (무료 혜택)</div><div style="display:flex;gap:6px;flex-wrap:wrap">${[['hp','최대 HP +5'],['mp','최대 MP +5'],['ip','최대 IP +2'],['hp|mp','HP +5 또는 MP +5 (선택)'],['','없음']].map(([v,l])=>`<button class="chip${d.bonus===v?' on':''}" data-act="cwbonus" data-v="${v}">${l}</button>`).join('')}</div></div>
+    <div class="cw-box"><div class="sub" style="margin-top:0">장비 · 의식 자격 (표준 1~2개 권장)</div><div style="display:flex;gap:6px;flex-wrap:wrap">${CW_GRANTS.map(([k,l])=>`<button class="chip${d.grants.includes(k)?' on':''}" data-act="cwgrant" data-v="${k}">${l}</button>`).join('')}</div>
+      <label class="f" style="margin-top:8px">추가 무료 혜택 문구 (선택)<input class="in" data-cw="extraFree" value="${esc(d.extraFree)}" placeholder="예: 탐험 중 프로젝트 진행 시 1칸 추가"></label></div>
+    <div class="cw-box"><label class="ck"><input type="checkbox" data-cwb="hasSpells"${d.hasSpells?' checked':''}> 주문 시전 클래스 (전용 주문·주문 부여 스킬 사용)</label>
+      ${d.hasSpells?`<div class="row" style="margin-top:8px"><label class="f">주문 부여 스킬 이름<input class="in" data-cw="spellSkill" value="${esc(d.spellSkill)}" placeholder="예: 정령 마법 (다음 단계에서 주문 목록 편집)"></label></div>`:''}</div>
+  </div>`;
+  if(st==='skills'){
+    const sum=d.skills.reduce((a,s)=>a+(+s.max||1),0);
+    return h('클래스 스킬 설계',`표준 클래스는 5개 스킬(최대 SL 합계 약 15~25)로 구성해요. 현재 ${d.skills.length}개 · 총 SL ${sum}`)+`<div class="wb">
+      <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm pri" data-act="cwaddsk"><i class="gi" data-ic="plus"></i> 스킬 추가</button><span class="wtip">자동 효과 종류를 고르면 시트 방어·플레이툴 전투 수치/행동이 자동으로 작동해요.</span></div>
+      ${d.skills.map((s,si)=>{const fx=s.fx||{kind:'none'};return`<div class="cw-box cw-sk"><div class="row">
+        <label class="f" style="flex:2">스킬 이름 *<input class="in" data-cws="${si}|n" value="${esc(s.n)}"></label>
+        <label class="f" style="max-width:110px">최대 SL<select class="sel" data-cws="${si}|max">${Array.from({length:10},(_,j)=>j+1).map(v=>`<option value="${v}"${+s.max===v?' selected':''}>${v}</option>`).join('')}</select></label>
+        <label class="f" style="max-width:120px">유형<select class="sel" data-cws="${si}|kind">${['패시브','행동','반응'].map(v=>`<option${s.kind===v?' selected':''}>${v}</option>`).join('')}</select></label>
+        ${d.skills.length>1?`<button class="btn sm x" data-act="cwdelsk" data-i="${si}" style="align-self:end">삭제</button>`:''}
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label class="f" style="flex:2">전투/시트 자동화 효과<select class="sel" data-cwfx="${si}|kind">${CW_FX_LIST.map(([v,l])=>`<option value="${v}"${(fx.kind||'none')===v?' selected':''}>${l}</option>`).join('')}</select></label>
+        ${['atkDmg','atkAcc','spellDmg','healBonus','defBonus','mdefBonus','activeDmg','activeHeal','activeBuff'].includes(fx.kind)?`<label class="f" style="max-width:95px">+SL당<input class="in" type="number" data-cwfx="${si}|perSl" value="${+(fx.perSl??0)}"></label><label class="f" style="max-width:95px">고정값<input class="in" type="number" data-cwfx="${si}|val" value="${+(fx.val??0)}"></label>`:''}
+        ${['atkDmg','atkAcc'].includes(fx.kind)?`<label class="f" style="max-width:120px">조건<select class="sel" data-cwfx="${si}|cond">${[['all','전체 공격'],['melee','근접만'],['ranged','원거리만'],['crisis','위기 시']].map(([v,l])=>`<option value="${v}"${(fx.cond||'all')===v?' selected':''}>${l}</option>`).join('')}</select></label>`:''}
+        ${fx.kind?.startsWith('active')?`<label class="f" style="max-width:95px">MP 비용<input class="in" type="number" data-cwfx="${si}|mp" value="${+(fx.mp??10)}"></label>`:''}
+        ${fx.kind==='activeDmg'?`<label class="f" style="max-width:110px">유형<select class="sel" data-cwfx="${si}|type">${DTYPES.map(x=>`<option${(fx.type||'물리')===x?' selected':''}>${x}</option>`).join('')}</select></label><label class="f" style="max-width:115px">대상<select class="sel" data-cwfx="${si}|tgt">${[['foe','적 1명'],['all_foes','모든 적']].map(([v,l])=>`<option value="${v}"${(fx.tgt||'foe')===v?' selected':''}>${l}</option>`).join('')}</select></label>`:''}
+        ${fx.kind==='activeHeal'?`<label class="f" style="max-width:95px">자원<select class="sel" data-cwfx="${si}|res">${[['hp','HP'],['mp','MP']].map(([v,l])=>`<option value="${v}"${(fx.res||'hp')===v?' selected':''}>${l}</option>`).join('')}</select></label><label class="f" style="max-width:115px">대상<select class="sel" data-cwfx="${si}|tgt">${[['ally','아군 1명'],['all_allies','모든 아군']].map(([v,l])=>`<option value="${v}"${(fx.tgt||'ally')===v?' selected':''}>${l}</option>`).join('')}</select></label>`:''}
+        ${fx.kind==='activeStatus'?`<label class="f" style="max-width:110px">상태 이상<select class="sel" data-cwfx="${si}|st">${Object.entries(STATUS).map(([k,[nm]])=>`<option value="${k}"${(fx.st||'dazed')===k?' selected':''}>${nm}</option>`).join('')}</select></label><label class="f" style="max-width:115px">대상<select class="sel" data-cwfx="${si}|tgt">${[['foe','적 1명'],['all_foes','모든 적']].map(([v,l])=>`<option value="${v}"${(fx.tgt||'foe')===v?' selected':''}>${l}</option>`).join('')}</select></label>`:''}
+        ${fx.kind==='activeBuff'?`<label class="f" style="max-width:120px">버프<select class="sel" data-cwfx="${si}|buff">${[['dmg+','피해 증가'],['resist','속성 저항']].map(([v,l])=>`<option value="${v}"${(fx.buff||'dmg+')===v?' selected':''}>${l}</option>`).join('')}</select></label>${fx.buff==='resist'?`<label class="f" style="max-width:110px">속성<select class="sel" data-cwfx="${si}|ty">${DTYPES.map(x=>`<option${(fx.ty||'화염')===x?' selected':''}>${x}</option>`).join('')}</select></label>`:''}`:''}
+        ${fx.kind!=='none'?`<button class="btn sm" data-act="cwautofill" data-i="${si}" style="align-self:end">설명 자동 채우기</button>`:''}
+      </div>
+      <label class="f" style="margin-top:8px">효과 설명<textarea class="in" data-cws="${si}|d" style="min-height:54px" placeholder="룰북 텍스트 또는 효과 메모">${esc(s.d)}</textarea></label></div>`}).join('')}
+    </div>`;
+  }
+  if(st==='extra'){
+    const hfx=d.heroic?.fx||{kind:'none'};
+    return h('전용 영웅 기술 · 주문','마스터(10레벨) 시 여는 영웅 기술과, 주문 시전 클래스라면 전용 주문을 설정하세요.')+`<div class="wb">
+      <div class="cw-box"><div class="sub" style="margin-top:0">마스터 영웅 기술 (선택)</div>
+        <div class="row"><label class="f">영웅 기술 이름<input class="in" data-cwh="n" value="${esc(d.heroic.n)}" placeholder="예: 초신성 마력 (비워 두면 생략)"></label><label class="f">해금 조건<input class="in" data-cwh="req" value="${esc(d.heroic.req)}" placeholder="예: ${esc(d.name||'클래스')} 마스터"></label></div>
+        <div class="row" style="margin-top:8px"><label class="f" style="flex:2">패시브 자동 보너스 (선택)<select class="sel" data-cwhfx="kind">${[['none','직접 서술'],['atkDmg','공격 추가 피해'],['atkAcc','공격 명중 보너스'],['spellDmg','공격 주문 추가 피해'],['healBonus','회복량 보너스'],['defBonus','방어도 증가'],['mdefBonus','마법 방어도 증가']].map(([v,l])=>`<option value="${v}"${(hfx.kind||'none')===v?' selected':''}>${l}</option>`).join('')}</select></label>
+          ${hfx.kind!=='none'?`<label class="f" style="max-width:100px">보너스 수치<input class="in" type="number" data-cwhfx="val" value="${+(hfx.val??5)}"></label>`:''}
+        </div>
+        <label class="f" style="margin-top:8px">효과 설명<textarea class="in" data-cwh="d" style="min-height:60px">${esc(d.heroic.d)}</textarea></label>
+      </div>
+      <div class="cw-box"><div style="display:flex;align-items:center;gap:8px"><div class="sub" style="margin:0">전용 주문 (${d.spells.length})</div><span class="sp"></span><button class="btn sm pri" data-act="cwaddsp"><i class="gi" data-ic="plus"></i> 주문 추가</button></div>
+        ${d.hasSpells?'':'<p class="wtip" style="margin:6px 0">이전 단계에서 [주문 시전 클래스]를 켜면 캐릭터 생성·레벨업에서도 배울 수 있어요.</p>'}
+        ${d.spells.map((sp,i)=>`<div class="cw-box" style="margin-top:8px"><div class="row">
+          <label class="f" style="flex:2">주문 이름<input class="in" data-cwsp="${i}|n" value="${esc(sp.n)}"></label>
+          <label class="f" style="max-width:85px">MP<input class="in" type="number" data-cwsp="${i}|mp" value="${+(sp.mp??10)}"></label>
+          <label class="f">대상<input class="in" data-cwsp="${i}|tg" value="${esc(sp.tg||'생물 하나')}"></label>
+          <label class="ck" style="align-self:end"><input type="checkbox" data-cwspb="${i}|off"${sp.off?' checked':''}>공격 주문</label>
+          <button class="btn sm x" data-act="cwdelsp" data-i="${i}" style="align-self:end">삭제</button>
+        </div>
+        ${sp.off?`<div class="row" style="margin-top:6px"><label class="f" style="max-width:95px">HR+<input class="in" type="number" data-cwsp="${i}|dmg" value="${+(sp.dmg??15)}"></label><label class="f">유형<select class="sel" data-cwsp="${i}|type">${DTYPES.map(x=>`<option${(sp.type||'화염')===x?' selected':''}>${x}</option>`).join('')}</select></label></div>`:''}
+        <label class="f" style="margin-top:6px">주문 설명<input class="in" data-cwsp="${i}|d" value="${esc(sp.d||'')}"></label></div>`).join('')}
+      </div>
+    </div>`;
+  }
+  if(st==='preview'){
+    const def=cwToDef(d),sum=def.skills.reduce((a,s)=>a+s.max,0);
+    return h('완성 미리보기 · 저장','도감에 저장하거나 현재 캐릭터에 바로 장착할 수 있어요. JSON으로 동료와 공유할 수도 있습니다.')+`<div class="wb">
+      <div class="wcls"><h4>${esc(def.name)} <em class="srct CUSTOM">CUSTOM</em><small>${BLAB(def.bonus)} · 스킬 ${def.skills.length}개 (총 SL ${sum})</small></h4>
+        <div style="padding:10px 12px;font-size:13px;line-height:1.6">${def.info?esc(def.info)+'<br>':''}<b>무료 혜택:</b> ${esc(def.free.join(' / ')||'없음')}</div>
+        ${def.skills.map(s=>`<div class="wsk"><b>${esc(s.n)} <small style="color:var(--gold)">${s.max>1?'◆'+s.max:'●'} ${esc(s.kind)}${s.fx?.kind&&s.fx.kind!=='none'?' · 자동':''}</small></b><div></div><p>${esc(s.d||cwFxDesc(s.fx,s.max)||'—')}</p></div>`).join('')}
+        ${def.heroic?`<div class="wsk"><b>영웅 기술 · ${esc(def.heroic.n)}</b><div></div><p>${esc(def.heroic.d)}</p></div>`:''}
+        ${def.classSpells?.length?`<div class="wsk"><b>전용 주문 (${def.classSpells.length}종)</b><div></div><p>${def.classSpells.map(x=>`${esc(x.n)} (MP ${x.mp})`).join(', ')}</p></div>`:''}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button class="btn" data-act="cwexp"><i class="gi" data-ic="ext"></i> JSON 내보내기</button>
+        <span class="wtip" style="align-self:center">전투 자동화가 지정된 스킬은 플레이툴에서도 바로 작동해요.</span>
+      </div>
+    </div>`;
+  }
+  return'';
+}
+
+/* CUSTOM_CLASS_GENERATOR_END */
 const MANUAL_SK={"의식 비전술":"의식: 효과를 플레이어가 제안하고 GM이 정함","의식 키메라술":"의식: 효과를 플레이어가 제안하고 GM이 정함","의식 원소술":"의식: 효과를 플레이어가 제안하고 GM이 정함","의식 엔트로피술":"의식: 효과를 플레이어가 제안하고 GM이 정함","의식 영혼술":"의식: 효과를 플레이어가 제안하고 GM이 정함","세이렌의 노래":"의식·소리 환영: 효과를 GM이 정함","신기루":"의식·시각 환영: 효과를 GM이 정함","신록의 흔들림":"의식·식물 조종: 효과를 GM이 정함","야생의 언어":"동물·식물과 대화 (서사)","단련된 기억":"기억해 내기 (서사)","뜻밖의 아군":"NPC가 어떻게 도울지 GM이 정함","나중에 보자":"장면에서 사라졌다 다른 장면에 등장 (서사)","번뜩이는 통찰":"질문의 답을 GM이 함","선술집 소문":"질문의 답을 GM이 함","상징의 연결":"상징 지닌 생물의 방향 감지 (서사)","진짜 보물":"발동 조건(NPC가 탐욕을 물리침 등)이 이야기 판단","교역의 바람":"GM이 승인하는 물건·NPC 만들기 (분쟁 밖)","내비게이터":"텔레파시·의식 (서사)","게노클렙시스":"NPC에게 어울리는 테리오폼을 GM이 고름","격렬한 발놀림":"\"곡예·협응·속도에 기대는\" 판정인지 사람이 판단","순간 환복":"툴이 장비 변경을 막지 않으니 할 일이 없음","양손잡이":"툴의 쌍수가 무기 범주를 막지 않으니 할 일이 없음","비전의 메아리":"권능 영역이 적용되는지 GM이 최종 판단","신속한 의식":"의식 (툴에 의식 시스템 없음, 효과를 GM이 정함)","의식 봉인":"의식을 봉인했다 조건 충족 시 발동 (서사)"};const manTag=n=>MANUAL_SK[n]?`<em class="srct manual" title="자동화 불가 — ${esc(MANUAL_SK[n])}. 효과는 GM과 직접 처리해요.">수동</em>`:'';
 const srcTag=s=>s&&s!=='CORE'?`<em class="srct ${s}">${s}</em>`:'';
-const bySrc=(list,fn)=>['CORE','HF','NF','TF'].map(s=>{const l=list.filter(x=>(x.src||'CORE')===s);return l.length?fn(s,l):''}).join('');
+const bySrc=(list,fn)=>['CORE','HF','NF','TF','CUSTOM'].map(s=>{const l=list.filter(x=>(x.src||'CORE')===s);return l.length?fn(s,l):''}).join('');
 const mpNum=s=>+(String(s).match(/\d+/)||[0])[0];
 const weaponToEq=w=>({gid:w.id,custom:!!w.custom,sp:w.rare?w.sp:'',name:w.n,cat:w.cat,a1:w.a1,a2:w.a2,acc:w.acc,dmg:w.dmg,type:w.type,range:w.range,hand:w.hand,mil:w.mil});
 const armorToEq=a=>({gid:a.id,sp:a.sp||'',name:a.n==='방어구 없음'?'':a.n,base:a.base,def:a.def,mdef:a.mdef,init:a.init,martial:a.mil});
@@ -4144,17 +4477,17 @@ function pClasses(c,d){const warn=d.clsLv!==+c.level?`<span class="warn">클래�
   const tpSl=derive(c).sl('교역의 바람'),hasTp=tpSl||derive(c).sl('개인 재고')||derive(c).sl('들어 본 적 있어!')||derive(c).sl('진짜 보물'),tpMax=tpSl+3,tpV=c.tp==null?2:+c.tp;
   const tpUI=hasTp?`<div class="cho" style="margin-bottom:10px"><div class="cho-h"><b>머천트 · 교역 포인트</b><span class="muted">최대 ${tpMax}</span><span class="sp"></span><span class="sl"><button data-act="tp" data-v="-1"${tpV<=0?' disabled':''}><i class="gi" data-ic="minus"></i></button><b>${tpV}</b><button data-act="tp" data-v="1"${tpV>=tpMax?' disabled':''}><i class="gi" data-ic="plus"></i></button></span>${tpSl?`<button class="btn sm" data-act="tp" data-v="${tpSl+1}">정착지 휴식 (+${tpSl+1})</button>`:''}</div></div>`:'';
   const compSl=derive(c).sl('충직한 동료'),cp=c.companion||{};const compUI=compSl?`<div class="cho" style="margin-bottom:10px"><div class="cho-h"><b>웨이페어러 · 충직한 동료</b><span class="muted">HP ${compSl*(cp.attr?.mig||8)+Math.floor((+c.level||0)/2)+(hasHero(c,'영웅의 동료')?10:0)} · 명중 +${compSl}</span></div><div class="row"><label class="f">이름<input class="in" data-comp="name" value="${esc(cp.name||'동료')}"></label><label class="f">종족<select class="sel" data-comp="sp">${['야수','인공체','정령','식물'].map(x=>`<option${(cp.sp||'야수')===x?' selected':''}>${x}</option>`).join('')}</select></label><label class="f">근력<select class="sel" data-comp="mig">${[6,8,10,12].map(x=>`<option value="${x}"${(cp.attr?.mig||8)===x?' selected':''}>d${x}</option>`).join('')}</select></label><label class="f">공격 이름<input class="in" data-comp="atkName" value="${esc(cp.atkName||'동료 공격')}"></label><label class="f">피해 +<input class="in" type="number" data-comp="dmg" value="${+(cp.dmg??5)}" style="width:5em"></label></div></div>`:'';
-  return`${tpUI}${compUI}<div class="row" style="margin-bottom:10px;align-items:center"><span style="flex:none">${warn}</span><select class="sel" id="addcls"><option value="">＋ 클래스 추가…</option>${bySrc(CLASSES.filter(k=>!c.classes.some(x=>x.name===k.name)),(s,l)=>`<optgroup label="${SRCN[s]}">${l.map(k=>`<option>${k.name}</option>`).join('')}</optgroup>`)}<option value="__custom">직접 입력…</option></select></div>
-  ${c.classes.map((k,ci)=>{const lv=k.skills.reduce((a,x)=>a+(+x.sl||0),0);const def=CLASS[k.name];
-    return`<div class="cls"><div class="cls-h"><b>${esc(k.name)}</b>${srcTag(def?.src)}<span class="lv">LV ${lv}</span>${lv>=10?'<span style="font-size:12px;color:var(--gold2)">· 마스터 (영웅 스킬 획득 가능)</span>':''}<span style="flex:1"></span><button class="btn sm" style="flex:none;white-space:nowrap" data-act="delcls" data-i="${ci}">삭제</button></div>
-    ${def?`<div class="cls-free">${RULES.classInfo[k.name]?esc(RULES.classInfo[k.name])+'<br>':''}무료 혜택 — ${def.free.map(esc).join(' / ')}${def.bonus==='hp|mp'?` <select class="sel" data-pick="${ci}" style="width:auto;display:inline-flex">${[['hp','HP +5 선택'],['mp','MP +5 선택']].map(([v,l])=>`<option value="${v}"${(k.pick||'hp')===v?' selected':''}>${l}</option>`).join('')}</select>`:''}</div>`:''}
+  return`${tpUI}${compUI}<div class="row" style="margin-bottom:10px;align-items:center"><span style="flex:none">${warn}</span><select class="sel" id="addcls"><option value="">＋ 클래스 추가…</option>${bySrc(allClasses().filter(k=>!c.classes.some(x=>x.name===k.name)),(s,l)=>`<optgroup label="${SRCN[s]}">${l.map(k=>`<option>${k.name}</option>`).join('')}</optgroup>`)}<option value="__custom">＋ 클래스 생성기로 만들기…</option></select><button class="btn sm pri" type="button" data-act="clswiz">＋ 클래스 생성기</button></div>
+  ${c.classes.map((k,ci)=>{const lv=k.skills.reduce((a,x)=>a+(+x.sl||0),0);const def=clsDef(k.name,k);
+    return`<div class="cls"><div class="cls-h"><b>${esc(k.name)}</b>${srcTag(def?.src)}<span class="lv">LV ${lv}</span>${lv>=10?'<span style="font-size:12px;color:var(--gold2)">· 마스터 (영웅 스킬 획득 가능)</span>':''}<span style="flex:1"></span>${!CLASS[k.name]||k.custom?`<button class="btn sm" style="flex:none;white-space:nowrap" data-act="cwedit" data-i="${ci}">생성기 편집</button><button class="btn sm" style="flex:none;white-space:nowrap" data-act="cwlibsave" data-i="${ci}">도감 저장</button>`:""}<button class="btn sm" style="flex:none;white-space:nowrap" data-act="delcls" data-i="${ci}">삭제</button></div>
+    ${def?`<div class="cls-free">${(RULES.classInfo[k.name]||k.info||def?.info)?esc(RULES.classInfo[k.name]||k.info||def.info)+'<br>':''}무료 혜택 — ${def.free.map(esc).join(' / ')}${def.bonus==='hp|mp'?` <select class="sel" data-pick="${ci}" style="width:auto;display:inline-flex">${[['hp','HP +5 선택'],['mp','MP +5 선택']].map(([v,l])=>`<option value="${v}"${(k.pick||'hp')===v?' selected':''}>${l}</option>`).join('')}</select>`:''}</div>`:''}
     ${k.skills.map((s,si)=>`<div class="skill${s.sl?'':' off'}"><span class="sk-ic">${s.max>1?'◆':'●'}</span><div><span class="nm" data-act="skopen">${esc(s.n)}</span>${manTag(s.n)}<span class="slp">${Array.from({length:Math.min(s.max||1,10)},(_,i)=>`<i class="${i<(s.sl||0)?'on':''}"></i>`).join('')}</span><button class="btn sm skpopb" data-act="skpop" data-c="${ci}" data-s="${si}" title="전투·여행 화면에서 내 캐릭터 위에 이 스킬의 이름과 설명을 띄워요">팝업</button></div>
       <div class="sl"><button data-act="sl" data-c="${ci}" data-s="${si}" data-v="-1"><i class="gi" data-ic="minus"></i></button><b>${s.sl||0}</b><button data-act="sl" data-c="${ci}" data-s="${si}" data-v="1"><i class="gi" data-ic="plus"></i></button></div>
       <div class="ds">${def?esc(s.d):`<textarea class="in" data-b="classes.${ci}.skills.${si}.d" placeholder="효과">${esc(s.d)}</textarea>`}</div></div>${CHOICE_SK[s.n]&&!['재능','상징'].includes(CHOICE_SK[s.n].lab)?choiceUI(c,s.n):''}${s.n==='요리'&&s.sl?cookUI(c,s.sl):''}`).join('')}
     ${def?.rules?`<details class="man" style="padding:2px 10px 8px"><summary>클래스 규칙 전문 (${SRCN[def.src]})</summary><div class="rules">${esc(def.rules)}</div></details>`:''}
     ${def?'':`<div style="padding:6px 10px"><button class="btn sm" data-act="addsk" data-c="${ci}"><i class="gi" data-ic="plus"></i> 스킬 추가</button></div>`}</div>`}).join('')||'<p class="muted">클래스를 추가하세요. 보통 2~3개 클래스에 5레벨을 나눠 배정해요.</p>'}
-  ${card('영웅 기술','HEROIC SKILLS',`${(c.heroics||[]).map((h,i)=>{const def=RULES.heroics.find(x=>x.n===h.n);return`<div class="spc"><div class="t"><b>${esc(h.n)}</b>${srcTag(def?.src)}${manTag(h.n)}<small>${heroMode(h.n)}</small><button class="btn sm" data-act="hero-use" data-i="${i}">사용 · 효과 보기</button><span style="flex:1"></span><button class="btn sm" style="flex:none;white-space:nowrap" data-act="delhero" data-i="${i}">삭제</button></div>${def?.req?`<div class="meta">조건: ${esc(def.req)}</div>`:''}<p class="d" style="white-space:pre-wrap">${esc(def?.d||def?.sum||'')}</p></div>`}).join('')||'<p class="muted" style="margin-top:0">클래스 하나를 10레벨까지 마스터할 때마다 영웅 기술 하나를 얻어요.</p>'}
-   <select class="sel" data-addhero="1"><option value="">＋ 영웅 기술 추가…</option>${bySrc(RULES.heroics.filter(h=>!(c.heroics||[]).some(x=>x.n===h.n)),(s,l)=>`<optgroup label="${SRCN[s]}">${l.map(h=>`<option value="${esc(h.n)}">${esc(h.n)}${h.req?' — '+esc(h.req).slice(0,40):''}</option>`).join('')}</optgroup>`)}</select>`)}`}
+  ${card('영웅 기술','HEROIC SKILLS',`${(c.heroics||[]).map((h,i)=>{const def=heroDef(h.n);return`<div class="spc"><div class="t"><b>${esc(h.n)}</b>${srcTag(def?.src)}${manTag(h.n)}<small>${heroMode(h.n)}</small><button class="btn sm" data-act="hero-use" data-i="${i}">사용 · 효과 보기</button><span style="flex:1"></span><button class="btn sm" style="flex:none;white-space:nowrap" data-act="delhero" data-i="${i}">삭제</button></div>${def?.req?`<div class="meta">조건: ${esc(def.req)}</div>`:''}<p class="d" style="white-space:pre-wrap">${esc(def?.d||def?.sum||'')}</p></div>`}).join('')||'<p class="muted" style="margin-top:0">클래스 하나를 10레벨까지 마스터할 때마다 영웅 기술 하나를 얻어요.</p>'}
+   <select class="sel" data-addhero="1"><option value="">＋ 영웅 기술 추가…</option>${bySrc([...RULES.heroics,...customHeroics(c)].filter(h=>!(c.heroics||[]).some(x=>x.n===h.n)),(s,l)=>`<optgroup label="${SRCN[s]}">${l.map(h=>`<option value="${esc(h.n)}">${esc(h.n)}${h.req?' — '+esc(h.req).slice(0,40):''}</option>`).join('')}</optgroup>`)}</select>`)}`}
 
 function weaponOpts(c,curName){const okM=allowed(c,'melee'),okR=allowed(c,'ranged');
   return`<option value="">— 룰북 무기에서 고르기 —</option>${[0,1].flatMap(r=>WCAT.map(cat=>{const ws=RULES.weapons.filter(w=>w.cat===cat&&!w.rare===!r);if(!ws.length)return'';return`<optgroup label="${r?'희귀 ':''}${cat}">${ws.map(w=>{const bad=w.mil&&!(w.range==='원거리'?okR:okM);return`<option value="${esc(w.n)}"${w.n===curName?' selected':''}${bad?' disabled':''}>${esc(w.n)} · ${AB[w.a1]}+${AB[w.a2]}${w.acc?' +'+w.acc:''} · HR+${w.dmg} · ${w.hand}${w.mil?' · 군용':''}${w.cost?' · '+w.cost+'z':''}</option>`}).join('')}</optgroup>`})).join('')}`}
@@ -4190,7 +4523,7 @@ function hsPanel(c){const S=GEAR_CATALOG.filter(x=>x.kind==='spheres'),sp=n=>S.f
      ${mfit.length?`<select class="sel hs-add" data-hsmadd="${k}" aria-label="${l}에 므네모스피어 넣기"><option value="">+ 므네모스피어 넣기</option>${mfit.map(m=>`<option value="${m.id}">${esc(m.cls)} · Lv ${hsMLv(m)}</option>`).join('')}</select>`:''}
      ${F&&hsLines(F).length?`<p class="hs-fx">${hsLines(F).map(esc).join(' · ')}</p>`:''}${M.some(m=>m._off)?'<p class="warn hs-fx">이미 가진 스킬과 겹치는 므네모스피어는 꺼져 있어요.</p>':''}</div>`}).join('')||'<p class="muted">무기나 방어구를 장비하면 구슬 칸이 생겨요.</p>';
   return rows+hsMnemoPanel(c,placed)}
-function hsHeroList(cls){return(RULES.heroics||[]).filter(h=>{const q=String(h.req||''),cl=CLASSES.filter(k=>q.includes(k.name)).map(k=>k.name);return!/레벨|스킬을/.test(q)&&(cl.length===0||cl.length===1&&cl[0]===cls)}).map(h=>h.n)}// its conditions must be met by this sphere alone
+function hsHeroList(cls){return(RULES.heroics||[]).filter(h=>{const q=String(h.req||''),cl=allClasses().filter(k=>q.includes(k.name)).map(k=>k.name);return!/레벨|스킬을/.test(q)&&(cl.length===0||cl.length===1&&cl[0]===cls)}).map(h=>h.n)}// its conditions must be met by this sphere alone
 function hsMnemoPanel(c,placed){const L=c.mnemo||[];
   return`<div class="hs-mn"><div class="hs-h"><b>므네모스피어</b><span class="muted">클래스 스킬을 담은 구슬 · 최대 Lv 5 · 무료 혜택·의식·프로젝트는 주지 않아요</span></div>
   ${L.map(m=>{const K=CLASSES.find(k=>k.name===m.cls),lv=hsMLv(m),ss=SPELL_SKILL[m.cls],nsp=ss?+(m.sk?.[ss]||0):0;
@@ -4226,13 +4559,13 @@ function cookUI(c,sl){const ck=c.cook||{},ing=ck.ing||{},T=['쓴맛','짠맛','�
    ${hasHero(c,'오늘의 특선')?`<div class="cho-h" style="margin-top:8px"><b>오늘의 특선</b><span class="muted">맛 3개 · 효과 3개 고르기</span></div>
     <div class="cho-l">${T.map(t=>{const on=(c.specialTastes||[]).includes(t);return`<button class="chip${on?' on':''}" data-act="spect" data-t="${t}"${!on&&(c.specialTastes||[]).length>=3?' disabled':''}>${t}</button>`}).join('')}</div>
     <div class="cho-l" style="margin-top:6px">${[['1:어둠','어둠 20/30'],['1:빛','빛 20/30'],['2:어둠','피해 어둠 고정'],['2:빛','피해 빛 고정'],['3','장면 주문 제거'],['4','공격 대상 아군 강제'],['5','격노'],['6','중독'],['7','HP·MP 30/40 회복'],['8','상태 이상 1 회복'],['9','혼란·격노·동요 회복'],['10','중독·둔화·약화 회복']].map(([v,l])=>{const on=(c.specialFx||[]).includes(v);return`<button class="chip${on?' on':''}" data-act="specf" data-v="${v}"${!on&&(c.specialFx||[]).length>=3?' disabled':''}>${l}</button>`}).join('')}</div>`:''}</div>`}
-function pSpells(c){const learnable=Object.keys(SPELL_SKILL).filter(k=>c.classes.some(x=>x.name===k));
+function pSpells(c){const learnable=Object.keys(customSpellSkillMap(c)).filter(k=>c.classes.some(x=>x.name===k));
   const gs=['사이킥 재능','상징술'].map(k=>choiceUI(c,k)).join('');
   const chimSl=derive(c).sl('주문 모방'),chimN=c.spells.filter(s=>s.cls==='키메리스트').length;
   const magiOn=(c.picks?.['도구']||[]).slice(0,choiceMax(c,'도구')).includes('마도기술 최상급'),magiCap=3+((+c.level||0)>=20?2:0)+((+c.level||0)>=40?2:0);
-  const magiUI=magiOn?`<div class="cho"><div class="cho-h"><b>팅커러 · 마법구 시제품</b><span class="muted">${(c.magispheres||[]).length} / ${magiCap}</span></div><div class="row"><select class="sel" data-addmagi="1"><option value="">— 시제품 주문 추가 —</option>${['엘리멘탈리스트','엔트로피스트','스피리티스트'].flatMap(k=>(RULES.spells[k]||[]).map(s=>`<option value="${esc(k+'|'+s.n)}">${esc(k)} · ${esc(s.n)} (MP ${esc(s.mp)})</option>`)).join('')}</select></div>${(c.magispheres||[]).length?`<div class="cho-d">${c.magispheres.map((s,i)=>`<p><b>${esc(s.n)}</b> <span class="muted">${esc(s.cls||'')} · MP ${esc(s.mp)}</span> <button class="btn x" data-act="delmagi" data-i="${i}">지우기</button></p>`).join('')}</div>`:''}</div>`:'';
+  const magiUI=magiOn?`<div class="cho"><div class="cho-h"><b>팅커러 · 마법구 시제품</b><span class="muted">${(c.magispheres||[]).length} / ${magiCap}</span></div><div class="row"><select class="sel" data-addmagi="1"><option value="">— 시제품 주문 추가 —</option>${['엘리멘탈리스트','엔트로피스트','스피리티스트'].flatMap(k=>(customSpellList(k,c)).map(s=>`<option value="${esc(k+'|'+s.n)}">${esc(k)} · ${esc(s.n)} (MP ${esc(s.mp)})</option>`)).join('')}</select></div>${(c.magispheres||[]).length?`<div class="cho-d">${c.magispheres.map((s,i)=>`<p><b>${esc(s.n)}</b> <span class="muted">${esc(s.cls||'')} · MP ${esc(s.mp)}</span> <button class="btn x" data-act="delmagi" data-i="${i}">지우기</button></p>`).join('')}</div>`:''}</div>`:'';
   const chimUI=chimSl?`<div class="cho"><div class="cho-h"><b>키메리스트 · 주문 모방</b><span class="muted">${chimN} / ${chimSl+2}개</span></div><div class="row"><label class="f">마법 판정 능력치<select class="sel" data-b="chimeristAttr"><option value="ins"${(c.chimeristAttr||'ins')==='ins'?' selected':''}>INS + WLP</option><option value="mig"${c.chimeristAttr==='mig'?' selected':''}>MIG + WLP</option></select></label><button class="btn sm" data-act="addchim" style="align-self:end">+ 모방 주문 추가</button></div></div>`:'';
-  return card('주문','SPELLS',`${gs}${chimUI}${magiUI}${learnable.length?`<div class="row" style="margin-bottom:10px">${learnable.map(k=>`<label class="f">${k} 주문 추가<select class="sel" data-addspell="${k}"><option value="">— 룰북에서 고르기 —</option>${RULES.spells[k].filter(s=>!c.spells.some(x=>x.n===s.n)).map(s=>`<option value="${esc(s.n)}">${esc(s.n)}${s.off?' (공격)':''} · MP ${esc(s.mp)}</option>`).join('')}</select></label>`).join('')}</div>`:'<p class="muted" style="margin-top:0">원소술사·엔트로피술사·영혼술사 클래스가 있으면 룰북 주문을 바로 고를 수 있어요.</p>'}
+  return card('주문','SPELLS',`${gs}${chimUI}${magiUI}${learnable.length?`<div class="row" style="margin-bottom:10px">${learnable.map(k=>`<label class="f">${k} 주문 추가<select class="sel" data-addspell="${k}"><option value="">— 룰북에서 고르기 —</option>${customSpellList(k,c).filter(s=>!c.spells.some(x=>x.n===s.n)).map(s=>`<option value="${esc(s.n)}">${esc(s.n)}${s.off?' (공격)':''} · MP ${esc(s.mp)}</option>`).join('')}</select></label>`).join('')}</div>`:'<p class="muted" style="margin-top:0">원소술사·엔트로피술사·영혼술사 클래스가 있으면 룰북 주문을 바로 고를 수 있어요.</p>'}
   ${c.spells.map((s,i)=>{const o=gearSpellOptions(c,{...s,mp:+s.mp||0,perT:!!s.perT||/T/.test(s.mpTxt||''),multi:/最大 3|최대 3|3명/.test(s.tg||'')?3:1});return`<div class="spc"><div class="t"><b>${esc(s.n||'이름 없는 주문')}</b>${s.off?'<span class="tag">공격</span>':''}<span style="flex:1"></span><button class="btn sm pri" data-act="cast" data-i="${i}">시전${s.off?' · 마법 판정':''}</button><button class="btn sm" style="flex:none;white-space:nowrap" data-act="delsp" data-i="${i}">삭제</button></div>
     <div class="meta">MP ${esc(o.mp+(o.perT?' × T':''))} · ${esc(o.multi>1?'생물 최대 '+o.multi+'명':s.tg||'—')} · ${esc(s.du||'—')}${s.cls?' · '+esc(s.cls):''}</div>${s.d?`<p class="d">${esc(s.d)}</p>`:''}
     <details class="man"><summary>직접 수정</summary><div class="row" style="margin-top:6px"><label class="f">이름${inp(`spells.${i}.n`,s.n)}</label><label class="f">MP${inp(`spells.${i}.mp`,s.mp,{n:1})}</label><label class="f">대상${inp(`spells.${i}.tg`,s.tg)}</label><label class="f">지속${inp(`spells.${i}.du`,s.du)}</label></div><div class="row" style="margin-top:6px"><label class="f">클래스${inp(`spells.${i}.cls`,s.cls||'')}</label><label class="f">배운 종족 (주문 모방)<select class="sel" data-b="spells.${i}.sp"><option value="">—</option>${['야수','몬스터','식물'].map(x=>`<option value="${x}"${s.sp===x?' selected':''}>${x}</option>`).join('')}</select></label><label class="ck" style="align-self:end"><input type="checkbox" data-spoff="${i}"${s.off?' checked':''}>공격 주문</label></div><label class="f" style="margin-top:6px">효과<textarea class="in" data-b="spells.${i}.d">${esc(s.d)}</textarea></label></details></div>`}).join('')}
@@ -4280,7 +4613,7 @@ function celebrate(o){const box=$('#fxo');
 
 /* ================= character creation wizard ================= */
 let W=null;
-const SPELLCLS=c=>Object.entries(SPELL_SKILL).map(([cls,sk])=>({cls,sk,n:(c.skills?.[cls]?.[sk])||0})).filter(x=>x.n>0);
+const SPELLCLS=c=>Object.entries(customSpellSkillMap()).map(([cls,sk])=>({cls,sk,n:(c.skills?.[cls]?.[sk])||0})).filter(x=>x.n>0);
 function presetSkillGaps(){return W?.mode==='preset'?(RULES.archetypes[W.pick]?.classes||[]).map(k=>({...k,gap:Math.max(0,(+k.lv||0)-k.skills.reduce((n,s)=>n+(+s.sl||0),0))})).filter(k=>k.gap):[]}
 function presetSkillAddValid(){return presetSkillGaps().every(k=>{const add=W.presetAdd?.[k.name]||{},base=n=>k.skills.find(s=>s.n===n)?.sl||0;return Object.values(add).reduce((n,v)=>n+v,0)===k.gap&&Object.entries(add).every(([n,v])=>Number.isInteger(v)&&v>=0&&CLASS[k.name].skills.some(s=>s.n===n&&base(n)+v<=s.max))})}
 function wizSteps(){if(W.mode==='preset')return['start','identity','theme','origin',...(presetSkillGaps().length?['skills']:[]),'name'];
@@ -4320,10 +4653,10 @@ function wizBody(st){const n=W.i+1;
   if(st==='theme')return wh(n,st,['테마','캐릭터를 움직이는 강렬한 이상이나 감정. 처음이라면 목록에서 고르기를 권해요.'])+`<div class="wb"><div class="wgrid">${RULES.themes.map(t=>`<button class="wc${W.theme===t.n?' on':''}" data-act="wset" data-k="theme" data-v="${esc(t.n)}"><b>${esc(t.n)}</b><p>${esc(t.d)}</p></button>`).join('')}</div>
     <div class="wfield" style="margin-top:14px"><span class="wtip">또는 직접 만들기</span><input class="in" id="w-theme" value="${RULES.themes.some(t=>t.n===W.theme)?'':esc(W.theme)}" placeholder="새로운 테마"></div></div>`;
   if(st==='origin')return wh(n,st,['출신','캐릭터가 온 곳, 고향. 세계 지도의 장소를 고르거나 새로 만들어도 돼요.'])+`<div class="wb"><div class="wfield"><input class="in" id="w-origin" autofocus value="${esc(W.origin)}" placeholder="예: 호수를 내려다보는 절벽 위 성채 도시 플라테아"></div></div>`;
-  if(st==='class')return wh(n,st,['클래스 2~3개',`처음 5레벨을 나눠 줄 클래스를 고르세요. 선택 ${W.cls.length}/3`])+`<div class="wb">${bySrc(CLASSES,(s,l)=>`<div class="wsrc">${SRCN[s]}</div><div class="wgrid">${l.map(k=>`<button class="wc${W.cls.includes(k.name)?' on':''}${!W.cls.includes(k.name)&&W.cls.length>=3?' dis':''}" data-act="wcls" data-v="${k.name}"><span class="k">${BLAB(k.bonus)}</span><b>${k.name}</b><p>${esc(RULES.classInfo[k.name]||k.free.join(' '))}</p></button>`).join('')}</div>`)}</div>`;
+  if(st==='class')return wh(n,st,['클래스 2~3개',`처음 5레벨을 나눠 줄 클래스를 고르세요. 선택 ${W.cls.length}/3`])+`<div class="wb">${bySrc(allClasses(),(s,l)=>`<div class="wsrc">${SRCN[s]}</div><div class="wgrid">${l.map(k=>`<button class="wc${W.cls.includes(k.name)?' on':''}${!W.cls.includes(k.name)&&W.cls.length>=3?' dis':''}" data-act="wcls" data-v="${k.name}"><span class="k">${BLAB(k.bonus)}</span><b>${k.name}</b><p>${esc(k.info||RULES.classInfo[k.name]||(k.free||[]).join(' '))}</p></button>`).join('')}</div>`)}</div>`;
   if(st==='skills'){const tot=W.cls.reduce((a,k)=>a+Object.values(W.skills[k]||{}).reduce((x,y)=>x+y,0),0);
     return wh(n,st,['스킬 고르기',`레벨 하나마다 스킬 하나. 남은 레벨 <b style="color:var(--gold3)">${5-tot}</b> · 고른 클래스마다 최소 1개`])+`<div class="wb">${W.cls.map(k=>{const sk=W.skills[k]||{};const lv=Object.values(sk).reduce((x,y)=>x+y,0);
-      return`<div class="wcls"><h4>${k}<small>LV ${lv}</small>${CLASS[k].bonus==='hp|mp'?`<select class="sel" data-wpick="${k}" style="width:auto;margin-left:auto">${[['hp','무료 혜택: HP +5'],['mp','무료 혜택: MP +5']].map(([v,l])=>`<option value="${v}"${(W.picks?.[k]||'hp')===v?' selected':''}>${l}</option>`).join('')}</select>`:''}</h4>${CLASS[k].skills.map(s=>`<div class="wsk"><b>${esc(s.n)} <small style="color:var(--gold)">${s.max>1?'◆'+s.max:''}</small></b><div class="sl"><button data-act="wsl" data-c="${k}" data-s="${esc(s.n)}" data-v="-1"><i class="gi" data-ic="minus"></i></button><b>${sk[s.n]||0}</b><button data-act="wsl" data-c="${k}" data-s="${esc(s.n)}" data-v="1" ${tot>=5||(sk[s.n]||0)>=s.max?'disabled':''}><i class="gi" data-ic="plus"></i></button></div><p>${esc(s.d)}</p></div>`).join('')}</div>`}).join('')}</div>`}
+      return`<div class="wcls"><h4>${k}<small>LV ${lv}</small>${clsDef(k).bonus==='hp|mp'?`<select class="sel" data-wpick="${k}" style="width:auto;margin-left:auto">${[['hp','무료 혜택: HP +5'],['mp','무료 혜택: MP +5']].map(([v,l])=>`<option value="${v}"${(W.picks?.[k]||'hp')===v?' selected':''}>${l}</option>`).join('')}</select>`:''}</h4>${clsDef(k).skills.map(s=>`<div class="wsk"><b>${esc(s.n)} <small style="color:var(--gold)">${s.max>1?'◆'+s.max:''}</small></b><div class="sl"><button data-act="wsl" data-c="${k}" data-s="${esc(s.n)}" data-v="-1"><i class="gi" data-ic="minus"></i></button><b>${sk[s.n]||0}</b><button data-act="wsl" data-c="${k}" data-s="${esc(s.n)}" data-v="1" ${tot>=5||(sk[s.n]||0)>=s.max?'disabled':''}><i class="gi" data-ic="plus"></i></button></div><p>${esc(s.d)}</p></div>`).join('')}</div>`}).join('')}</div>`}
   if(st==='attr'){const ty=W.type!=null?RULES.presets[W.type]:null;const pool=ty?[...ty.v]:[];
     const prev=W.type!=null&&wizValid('attr')?(()=>{const c=wizBuild(true);const d=derive(c);return`<div class="wsum"><div><small>MAX HP</small>${d.maxHp}</div><div><small>MAX MP</small>${d.maxMp}</div><div><small>MAX IP</small>${d.maxIp}</div><div><small>DEFENSE</small>${d.def}</div><div><small>M.DEFENSE</small>${d.mdef}</div></div>`})():'';
     return wh(n,st,['능력치','유형을 고른 뒤 그 주사위들을 네 능력치에 나눠 주세요. 선택한 클래스·스킬을 고려하세요.'])+`<div class="wb"><div class="wgrid" style="grid-template-columns:repeat(3,minmax(0,220px))">${RULES.presets.map((p,i)=>`<button class="wc${W.type===i?' on':''}" data-act="wtype" data-i="${i}"><b>${p.n}</b><p>${p.v.map(v=>'d'+v).join(', ')}</p></button>`).join('')}</div>
@@ -4337,7 +4670,7 @@ function wizBody(st){const n=W.i+1;
      <label>방패<select class="sel" data-wgear="shield"${two||W.gear.off?' disabled':''}><option value="">없음</option>${RULES.shields.filter(s=>!s.rare).map(s=>`<option value="${esc(s.n)}"${s.n===W.gear.shield?' selected':''}${s.mil&&!okS?' disabled':''}>${esc(s.n)} · 방어 +${s.def}${s.mdef?' · 마방 +'+s.mdef:''}${s.mil?' · 군용':''} · ${s.cost}z</option>`).join('')}</select></label></div>
      <p class="wtip">조언: 명중 판정이 최소 d10+d8이 되는 무기가 이상적이에요. 주문 위주라도 MP가 떨어질 때 쓸 무기는 챙기세요.</p>
      <div class="wsum">${(()=>{const d=derive(tmp);return`<div><small>DEFENSE</small>${d.def}</div><div><small>M.DEFENSE</small>${d.mdef}</div><div><small>INITIATIVE</small>${d.init}</div>`})()}</div></div>`}
-  if(st==='spell'){return wh(n,st,['주문 배우기','마법 스킬 레벨마다 주문 하나를 배워요.'])+`<div class="wb">${SPELLCLS(W).map(x=>`<div class="wcls"><h4>${x.cls}<small>${(W.spells[x.cls]||[]).length} / ${x.n}</small></h4><div class="wgrid" style="padding:10px">${RULES.spells[x.cls].map(s=>{const on=(W.spells[x.cls]||[]).includes(s.n);return`<button class="wc${on?' on':''}${!on&&(W.spells[x.cls]||[]).length>=x.n?' dis':''}" data-act="wspell" data-c="${x.cls}" data-v="${esc(s.n)}"><span class="k">MP ${esc(s.mp)} · ${esc(s.tg)} · ${esc(s.du)}${s.off?' · 공격':''}</span><b>${esc(s.n)}</b><p>${esc(s.d)}</p></button>`}).join('')}</div></div>`).join('')}</div>`}
+  if(st==='spell'){return wh(n,st,['주문 배우기','마법 스킬 레벨마다 주문 하나를 배워요.'])+`<div class="wb">${SPELLCLS(W).map(x=>`<div class="wcls"><h4>${x.cls}<small>${(W.spells[x.cls]||[]).length} / ${x.n}</small></h4><div class="wgrid" style="padding:10px">${customSpellList(x.cls).map(s=>{const on=(W.spells[x.cls]||[]).includes(s.n);return`<button class="wc${on?' on':''}${!on&&(W.spells[x.cls]||[]).length>=x.n?' dis':''}" data-act="wspell" data-c="${x.cls}" data-v="${esc(s.n)}"><span class="k">MP ${esc(s.mp)} · ${esc(s.tg)} · ${esc(s.du)}${s.off?' · 공격':''}</span><b>${esc(s.n)}</b><p>${esc(s.d)}</p></button>`}).join('')}</div></div>`).join('')}</div>`}
   if(st==='name'){const c=wizBuild(true);const d=derive(c);
     return wh(n,st,['이름과 완성','이름과 대명사를 정하세요. 모습은 동료들에게 직접 묘사해 주세요!'])+`<div class="wb"><div class="wfield"><input class="in" id="w-name" autofocus value="${esc(W.name)}" placeholder="이름"><div style="display:flex;gap:8px"><button class="btn sm" data-act="wname"><i class="gi" data-ic="dice"></i> 룰북 이름 표에서 무작위</button></div>
      <div class="row"><input class="in" id="w-pron" value="${esc(W.pron)}" placeholder="대명사 (선택)"><input class="in" id="w-player" value="${esc(W.player)}" placeholder="플레이어 이름 (선택)"></div>
@@ -4355,7 +4688,7 @@ const customWeapon=raw=>{const m=String(raw||'').match(/^(.+?)\(맞춤 무기, (
 function wizBuild(preview){const c=newChar();c.identity=W.identity.trim();c.theme=W.theme.trim();c.origin=W.origin.trim();c.name=W.name.trim()||'새 영웅';c.pron=W.pron;c.player=W.player;c.quirk=W.quirk||'';
   if(W.mode==='preset'){const a=RULES.archetypes[W.pick];c.attr={...a.attr};
     c.classes=a.classes.map(k=>({name:k.name,skills:CLASS[k.name].skills.map(s=>{const m=k.skills.find(x=>x.n===s.n);return{n:s.n,max:s.max,sl:(m?m.sl:0)+(W.presetAdd?.[k.name]?.[s.n]||0),d:s.d}})}));
-    for(const k of a.classes)for(const s of k.skills)for(const sp of s.spells){const cls=Object.keys(SPELL_SKILL).find(x=>SPELL_SKILL[x]===s.n);const def=cls&&RULES.spells[cls].find(x=>x.n===sp);if(def)c.spells.push(spellToC(def,cls))}
+    for(const k of a.classes)for(const s of k.skills)for(const sp of s.spells){const cls=Object.keys(customSpellSkillMap(c)).find(x=>SPELL_SKILL[x]===s.n);const def=cls&&RULES.spells[cls].find(x=>x.n===sp);if(def)c.spells.push(spellToC(def,cls))}
     const notes=a.classes.flatMap(k=>k.skills.filter(s=>s.note).map(s=>`${s.n}: ${s.note}`));if(notes.length)c.notes=notes.join('\n');
     let zen=0;const ws=[],custom=[];
     if(a.items){zen=a.zen;for(const it of a.items){const w=RULES.weapons.find(x=>x.n===it.n),ar=RULES.armor.find(x=>x.n===it.n),sh=RULES.shields.find(x=>x.n===it.n);
@@ -4366,9 +4699,9 @@ function wizBuild(preview){const c=newChar();c.identity=W.identity.trim();c.them
     const pack=[];if(ws[0]){c.equip.main=weaponToEq(ws[0]);for(const w of ws.slice(1)){if(!c.equip.off.name&&ws[0].hand!=='양손'&&w.hand!=='양손'&&!c.equip.shield.name)c.equip.off=weaponToEq(w);else pack.push(w.n)}}
     pack.push(...custom);if(pack.length)c.pack=pack.join(', ');c.zenit=zen}
   else{c.attr=Object.fromEntries(Object.keys(ATTR).map(k=>[k,+W.attr[k]||8]));
-    c.classes=W.cls.map(k=>({name:k,pick:CLASS[k].bonus==='hp|mp'?(W.picks?.[k]||'hp'):undefined,skills:CLASS[k].skills.map(s=>({n:s.n,max:s.max,sl:W.skills[k]?.[s.n]||0,d:s.d}))}));
+    c.classes=W.cls.map(k=>{const d=clsDef(k);return{name:k,pick:d.bonus==='hp|mp'?(W.picks?.[k]||'hp'):undefined,...(d.custom?{custom:true,bonus:d.bonus,free:[...(d.free||[])],info:d.info||'',heroic:d.heroic?JSON.parse(JSON.stringify(d.heroic)):null,spellSkill:d.spellSkill||'',classSpells:d.classSpells?JSON.parse(JSON.stringify(d.classSpells)):[]}:{}),skills:d.skills.map(s=>({n:s.n,max:s.max,sl:W.skills[k]?.[s.n]||0,d:s.d,...(s.fx&&s.fx.kind!=='none'?{fx:JSON.parse(JSON.stringify(s.fx))}:{})}))}});
     const g=wGear();if(g.m)c.equip.main=weaponToEq(g.m);if(g.o)c.equip.off=weaponToEq(g.o);if(g.a)c.equip.armor=armorToEq(g.a);if(g.s)c.equip.shield={name:g.s.n,def:g.s.def,mdef:g.s.mdef};
-    for(const[cls,list]of Object.entries(W.spells))for(const n of list){const def=RULES.spells[cls].find(x=>x.n===n);if(def)c.spells.push(spellToC(def,cls))}
+    for(const[cls,list]of Object.entries(W.spells))for(const n of list){const def=customSpellList(cls).find(x=>x.n===n);if(def)c.spells.push(spellToC(def,cls))}
     c.zenit=500-g.cost}
   return c}
 function wizFinish(){if(!W||!wizSteps().every(wizValid))return toast('생성 선택을 확인해 주세요',1);const c=wizBuild(false);const r1=rd(6),r2=rd(6);c.zenit+=(r1+r2)*10;fixRes(c);CH[c.id]=c;cur=c.id;tab='ov';LS.set('fu.sheet.tab',tab);W=null;$('#modal').innerHTML='';last=null;save(1);render();
@@ -4380,9 +4713,9 @@ function wizFinish(){if(!W||!wizSteps().every(wizValid))return toast('생성 선
 /* ================= level-up wizard ================= */
 let LV=null;
 function lvStart(){const c=C();if(!c)return;if(c.level>=99)return toast('최대 레벨이에요',1);if(c.exp<10)return toast('레벨업에는 경험치 10이 필요해요',1);LV={i:0,cls:null,skill:null,spell:'',attr:'',identity:c.identity,theme:c.theme};renderLv()}
-function lvSteps(){const c=C();const s=['class','skill'];const sk=LV.skill&&Object.values(SPELL_SKILL).includes(LV.skill)&&LV.cls in SPELL_SKILL&&SPELL_SKILL[LV.cls]===LV.skill;if(sk)s.push('spell');if([20,40].includes(+c.level+1))s.push('attr');s.push('traits');return s}
+function lvSteps(){const c=C();const s=['class','skill'];const _sm=customSpellSkillMap(c);const sk=LV.skill&&_sm[LV.cls]===LV.skill;if(sk)s.push('spell');if([20,40].includes(+c.level+1))s.push('attr');s.push('traits');return s}
 const LVN={class:'클래스',skill:'스킬',spell:'주문',attr:'능력치 성장',traits:'정체성·테마'};
-function lvValid(st){const c=C();if(!c||!LV)return false;const own=c.classes.find(k=>k.name===LV.cls),def=CLASS[LV.cls]?.skills.find(s=>s.n===LV.skill)||own?.skills.find(s=>s.n===LV.skill);if(st==='class')return!!(CLASS[LV.cls]||own)&&(own?.skills||[]).reduce((n,s)=>n+(+s.sl||0),0)<10;if(st==='skill')return!!def&&(+own?.skills.find(s=>s.n===LV.skill)?.sl||0)<(def.max||1);if(st==='spell')return(RULES.spells[LV.cls]||[]).some(s=>s.n===LV.spell)&&!c.spells.some(s=>s.n===LV.spell);if(st==='attr')return Object.keys(ATTR).includes(LV.attr)&&+c.attr[LV.attr]<12;return true}
+function lvValid(st){const c=C();if(!c||!LV)return false;const own=c.classes.find(k=>k.name===LV.cls),def=clsDef(LV.cls,c.classes.find(x=>x.name===LV.cls))?.skills.find(s=>s.n===LV.skill)||own?.skills.find(s=>s.n===LV.skill);if(st==='class')return!!(clsDef(LV.cls,c.classes.find(x=>x.name===LV.cls))||own)&&(own?.skills||[]).reduce((n,s)=>n+(+s.sl||0),0)<10;if(st==='skill')return!!def&&(+own?.skills.find(s=>s.n===LV.skill)?.sl||0)<(def.max||1);if(st==='spell')return customSpellList(LV.cls,c).some(s=>s.n===LV.spell)&&!c.spells.some(s=>s.n===LV.spell);if(st==='attr')return Object.keys(ATTR).includes(LV.attr)&&+c.attr[LV.attr]<12;return true}
 function renderLv(){if(!LV){$('#modal').innerHTML='';return}const c=C(),steps=lvSteps(),st=steps[LV.i];const fresh=!$('#modal .wiz');
   $('#modal').innerHTML=`<div class="wiz"${fresh?'':' style="animation:none"'}><aside class="wrail"><div class="wt"><small>LEVEL UP</small><b>Lv ${c.level} → ${+c.level+1}</b></div>
    ${steps.map((s,i)=>`<div class="wstep${i===LV.i?' on':i<LV.i?' done':''}"><i><span>${i<LV.i?'✓':i+1}</span></i>${LVN[s]}</div>`).join('')}</aside>
@@ -4391,19 +4724,19 @@ function renderLv(){if(!LV){$('#modal').innerHTML='';return}const c=C(),steps=lv
 function lvBody(st){const c=C(),n=LV.i+1,h=(t,p)=>`<div class="wh"><small>STEP ${n} · ${LVN[st]}</small><h2>${t}</h2><p>${p}</p></div>`;
   if(st==='class'){const own=c.classes.map(k=>({k,lv:k.skills.reduce((a,x)=>a+(+x.sl||0),0)}));
     return h('어느 클래스에 레벨을 줄까요?','이미 가진 클래스를 키우거나 새 클래스를 시작해요. 새 클래스는 무료 혜택도 함께 얻어요.')+`<div class="wb"><div class="wgrid">
-     ${own.map(({k,lv})=>`<button class="wc${LV.cls===k.name?' on':''}${lv>=10?' dis':''}" data-act="lcls" data-v="${esc(k.name)}"><span class="k">CURRENT · LV ${lv}${lv>=10?' · MASTERED':''}</span><b>${esc(k.name)}</b><p>${esc(RULES.classInfo[k.name]||'')}</p></button>`).join('')}
-     ${CLASSES.filter(k=>!c.classes.some(x=>x.name===k.name)).map(k=>`<button class="wc${LV.cls===k.name?' on':''}" data-act="lcls" data-v="${k.name}"><span class="k">NEW · ${BLAB(k.bonus)}${k.src!=='CORE'?' · '+k.src:''}</span><b>${k.name}</b><p>${esc(RULES.classInfo[k.name]||'')}</p></button>`).join('')}</div></div>`}
-  if(st==='skill'){const own=c.classes.find(k=>k.name===LV.cls);const sks=CLASS[LV.cls]?CLASS[LV.cls].skills.map(s=>({...s,sl:own?.skills.find(x=>x.n===s.n)?.sl||0})):(own?.skills||[]);
+     ${own.map(({k,lv})=>`<button class="wc${LV.cls===k.name?' on':''}${lv>=10?' dis':''}" data-act="lcls" data-v="${esc(k.name)}"><span class="k">CURRENT · LV ${lv}${lv>=10?' · MASTERED':''}</span><b>${esc(k.name)}</b><p>${esc((k.info||RULES.classInfo[k.name]||(k.free||[]).join(' ')||''))}</p></button>`).join('')}
+     ${allClasses().filter(k=>!c.classes.some(x=>x.name===k.name)).map(k=>`<button class="wc${LV.cls===k.name?' on':''}" data-act="lcls" data-v="${k.name}"><span class="k">NEW · ${BLAB(k.bonus)}${k.src!=='CORE'?' · '+k.src:''}</span><b>${k.name}</b><p>${esc((k.info||RULES.classInfo[k.name]||(k.free||[]).join(' ')||''))}</p></button>`).join('')}</div></div>`}
+  if(st==='skill'){const own=c.classes.find(k=>k.name===LV.cls);const sks=clsDef(LV.cls,c.classes.find(x=>x.name===LV.cls))?clsDef(LV.cls,c.classes.find(x=>x.name===LV.cls)).skills.map(s=>({...s,sl:own?.skills.find(x=>x.n===s.n)?.sl||0})):(own?.skills||[]);
     return h(`${LV.cls} 스킬`,'새로 얻거나 스킬 레벨(SL)을 올릴 스킬 하나를 고르세요.')+`<div class="wb"><div class="wgrid">${sks.map(s=>`<button class="wc${LV.skill===s.n?' on':''}${s.sl>=(s.max||1)?' dis':''}" data-act="lskill" data-v="${esc(s.n)}"><span class="k">SL ${s.sl} → ${s.sl+1} / ${s.max||1}</span><b>${esc(s.n)}</b><p>${esc(s.d||'')}</p></button>`).join('')}</div>
-     ${!CLASS[LV.cls]?'<p class="wtip">직접 만든 클래스예요. 새 스킬은 시트에서 추가하세요.</p>':''}</div>`}
-  if(st==='spell')return h('새 주문','마법 스킬 레벨이 올라 주문 하나를 더 배워요.')+`<div class="wb"><div class="wgrid">${RULES.spells[LV.cls].filter(s=>!c.spells.some(x=>x.n===s.n)).map(s=>`<button class="wc${LV.spell===s.n?' on':''}" data-act="lspell" data-v="${esc(s.n)}"><span class="k">MP ${esc(s.mp)} · ${esc(s.tg)}${s.off?' · 공격':''}</span><b>${esc(s.n)}</b><p>${esc(s.d)}</p></button>`).join('')}</div></div>`;
+     ${!clsDef(LV.cls,c.classes.find(x=>x.name===LV.cls))?'<p class="wtip">직접 만든 클래스예요. 새 스킬은 시트에서 추가하세요.</p>':''}</div>`}
+  if(st==='spell')return h('새 주문','마법 스킬 레벨이 올라 주문 하나를 더 배워요.')+`<div class="wb"><div class="wgrid">${ customSpellList(LV.cls,c).filter(s=>!c.spells.some(x=>x.n===s.n)).map(s=>`<button class="wc${LV.spell===s.n?' on':''}" data-act="lspell" data-v="${esc(s.n)}"><span class="k">MP ${esc(s.mp)} · ${esc(s.tg)}${s.off?' · 공격':''}</span><b>${esc(s.n)}</b><p>${esc(s.d)}</p></button>`).join('')}</div></div>`;
   if(st==='attr')return h('능력치 성장',`레벨 ${+c.level+1} 달성! 능력치 하나의 기본 주사위를 한 단계 키워요 (최대 d12).`)+`<div class="wb"><div class="wgrid">${Object.keys(ATTR).map(k=>`<button class="wc${LV.attr===k?' on':''}${c.attr[k]>=12?' dis':''}" data-act="lattr" data-v="${k}"><span class="k">${AB[k]}</span><b>${ATTR[k]}</b><p>d${c.attr[k]} → d${Math.min(12,+c.attr[k]+2)}</p></button>`).join('')}</div></div>`;
   if(st==='traits')return h('정체성과 테마','캐릭터가 성장했다면 정체성이나 테마를 바꿀 수 있어요. 무엇이 변화를 일으켰는지 이야기해 주세요.')+`<div class="wb"><div class="wfield"><span class="wtip">정체성</span><input class="in" id="l-identity" value="${esc(LV.identity)}"><span class="wtip">테마</span><input class="in" id="l-theme" value="${esc(LV.theme)}"></div></div>`;
   return''}
-function lvFinish(){const c=C();if(!c||!LV||c.exp<10||c.level>=99)return;const steps=lvSteps();if(!steps.every(lvValid))return toast('레벨업 선택을 확인해 주세요',1);const own=c.classes.find(k=>k.name===LV.cls),definition=CLASS[LV.cls]?.skills.find(s=>s.n===LV.skill)||own?.skills.find(s=>s.n===LV.skill);if(!definition||(own?.skills||[]).reduce((a,x)=>a+(+x.sl||0),0)>=10||(own?.skills.find(s=>s.n===LV.skill)?.sl||0)>=(definition.max||1))return;const before=derive(c);const lvBefore=c.level;
-  let k=c.classes.find(x=>x.name===LV.cls),isNew=false;if(!k){isNew=true;k={name:LV.cls,pick:CLASS[LV.cls].bonus==='hp|mp'?'hp':undefined,skills:CLASS[LV.cls].skills.map(s=>({n:s.n,max:s.max,sl:0,d:s.d}))};c.classes.push(k)}
+function lvFinish(){const c=C();if(!c||!LV||c.exp<10||c.level>=99)return;const steps=lvSteps();if(!steps.every(lvValid))return toast('레벨업 선택을 확인해 주세요',1);const own=c.classes.find(k=>k.name===LV.cls),definition=clsDef(LV.cls,c.classes.find(x=>x.name===LV.cls))?.skills.find(s=>s.n===LV.skill)||own?.skills.find(s=>s.n===LV.skill);if(!definition||(own?.skills||[]).reduce((a,x)=>a+(+x.sl||0),0)>=10||(own?.skills.find(s=>s.n===LV.skill)?.sl||0)>=(definition.max||1))return;const before=derive(c);const lvBefore=c.level;
+  let k=c.classes.find(x=>x.name===LV.cls),isNew=false;if(!k){isNew=true;const _cd=clsDef(LV.cls,c.classes.find(x=>x.name===LV.cls));k={name:LV.cls,pick:_cd.bonus==='hp|mp'?'hp':undefined,...(_cd.custom?{custom:true,bonus:_cd.bonus,free:[...(_cd.free||[])],info:_cd.info||'',heroic:_cd.heroic?JSON.parse(JSON.stringify(_cd.heroic)):null,spellSkill:_cd.spellSkill||'',classSpells:_cd.classSpells?JSON.parse(JSON.stringify(_cd.classSpells)):[]}:{}),skills:_cd.skills.map(s=>({n:s.n,max:s.max,sl:0,d:s.d,...(s.fx&&s.fx.kind!=='none'?{fx:JSON.parse(JSON.stringify(s.fx))}:{})}))};c.classes.push(k)}
   const s=k.skills.find(x=>x.n===LV.skill);s.sl=(+s.sl||0)+1;
-  if(LV.spell){const def=RULES.spells[LV.cls].find(x=>x.n===LV.spell);if(def)c.spells.push(spellToC(def,LV.cls))}
+  if(LV.spell){const def= customSpellList(LV.cls,c).find(x=>x.n===LV.spell);if(def)c.spells.push(spellToC(def,LV.cls))}
   if(LV.attr)c.attr[LV.attr]=Math.min(12,+c.attr[LV.attr]+2);
   c.identity=LV.identity;c.theme=LV.theme;c.level=+c.level+1;if(c.exp>=10)c.exp-=10;
   const after=derive(c);c.hp=Math.max(0,(+c.hp||0)+(after.maxHp-before.maxHp));c.mp=Math.max(0,(+c.mp||0)+(after.maxMp-before.maxMp));c.ip=Math.min(after.maxIp,(+c.ip||0)+(after.maxIp-before.maxIp));fixRes(c);
@@ -4417,11 +4750,31 @@ function lvFinish(){const c=C();if(!c||!LV||c.exp<10||c.level>=99)return;const s
 
 /* ---------- events ---------- */
 document.addEventListener('input',ev=>{const t=ev.target;
+  if(typeof CW!=='undefined'&&CW&&t.closest('#modal')){
+    if(t.dataset.cw){CW.d[t.dataset.cw]=t.value;const nb=$('#modal [data-act="cwnext"]');if(nb&&CW.i===1)nb.disabled=!cwValid('base');return}
+    if(t.dataset.cws){const[i,f]=t.dataset.cws.split('|');const sk=CW.d.skills?.[+i];if(sk){sk[f]=f==='max'?clamp(+t.value||1,1,10):t.value}const nb=$('#modal [data-act="cwnext"]');if(nb&&CW.i===2)nb.disabled=!cwValid('skills');return}
+    if(t.dataset.cwfx){const[i,f]=t.dataset.cwfx.split('|');const fx=CW.d.skills?.[+i]?.fx;if(fx)fx[f]=['val','perSl','mp'].includes(f)?(+t.value||0):t.value;return}
+    if(t.dataset.cwh){CW.d.heroic=CW.d.heroic||{n:'',req:'',d:'',fx:{kind:'none',val:0}};CW.d.heroic[t.dataset.cwh]=t.value;return}
+    if(t.dataset.cwhfx){CW.d.heroic=CW.d.heroic||{};CW.d.heroic.fx=CW.d.heroic.fx||{kind:'none',val:0};CW.d.heroic.fx[t.dataset.cwhfx]=['val','perSl','mp'].includes(t.dataset.cwhfx)?(+t.value||0):t.value;return}
+    if(t.dataset.cwsp){const[i,f]=t.dataset.cwsp.split('|');const sp=CW.d.spells?.[+i];if(sp)sp[f]=['mp','dmg'].includes(f)?clamp(+t.value||0,0,999):t.value;return}
+  }
   if(t.id?.startsWith('w-')&&W){W[t.id.slice(2)]=t.value;const b=$('#modal [data-act="wnext"],#modal [data-act="wfinish"]');if(b)b.disabled=!wizValid(wizSteps()[W.i]);return}
   if(t.id?.startsWith('l-')&&LV){LV[t.id.slice(2)]=t.value;return}
   if(!t.dataset.b)return;const c=C();let v=t.value;if(t.dataset.n)v=v===''?0:+v;if(t.dataset.n){if(!Number.isFinite(v))v=0;v=clamp(v,-99999,99999);if(t.dataset.b==='level')v=clamp(Math.round(v),1,99);if(/^attr\./.test(t.dataset.b))v=[6,8,10,12].reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a);if(['hp','mp','ip','fp','zenit','exp'].includes(t.dataset.b))v=Math.max(0,v)}if(t.dataset.b==='spriteFlip')v=!!v;setP(c,t.dataset.b,v);save();
   if(t.dataset.b==='name'){const h=$('.hero-plate h1');if(h)h.textContent=v}});
-document.addEventListener('change',ev=>{const t=ev.target;if(t.id==='showall'){LS.set('fu.sheet.all',t.checked);render();return}const c=C();
+document.addEventListener('change',ev=>{const t=ev.target;if(t.id==='showall'){LS.set('fu.sheet.all',t.checked);render();return}
+  if(typeof CW!=='undefined'&&CW&&t.closest('#modal')){
+    const needR=t.tagName==='SELECT'||t.type==='checkbox';
+    if(t.dataset.cwb){CW.d[t.dataset.cwb]=t.type==='checkbox'?t.checked:t.value;if(CW.d.hasSpells&&!CW.d.spellSkill)CW.d.spellSkill=CW.d.skills[0]?.n||'';renderCw();return}
+    if(t.dataset.cw){CW.d[t.dataset.cw]=t.type==='checkbox'?t.checked:t.value;if(needR)renderCw();return}
+    if(t.dataset.cws){const[i,f]=t.dataset.cws.split('|');const sk=CW.d.skills?.[+i];if(sk)sk[f]=f==='max'?clamp(+t.value||1,1,10):t.value;if(needR)renderCw();return}
+    if(t.dataset.cwfx){const[i,f]=t.dataset.cwfx.split('|');const sk=CW.d.skills?.[+i];if(sk){sk.fx=sk.fx||{kind:'none'};sk.fx[f]=['val','perSl','mp'].includes(f)?(+t.value||0):t.value;if(f==='kind'){const k=t.value;sk.fx={kind:k,val:k==='activeDmg'?15:k==='activeHeal'?20:0,perSl:k==='defBonus'||k==='mdefBonus'?1:k==='atkDmg'||k==='spellDmg'?2:k==='activeDmg'||k==='activeHeal'?5:k==='healBonus'?5:k==='activeBuff'?3:1,cond:'all',type:sk.fx.type||'물리',tgt:k==='activeHeal'||k==='activeBuff'?'ally':'foe',st:sk.fx.st||'dazed',buff:sk.fx.buff||'dmg+',ty:sk.fx.ty||'화염',res:sk.fx.res||'hp',mp:k.startsWith('active')?(sk.fx.mp??10):0}}}if(needR)renderCw();return}
+    if(t.dataset.cwh){CW.d.heroic=CW.d.heroic||{n:'',req:'',d:'',fx:{kind:'none',val:0}};CW.d.heroic[t.dataset.cwh]=t.value;return}
+    if(t.dataset.cwhfx){CW.d.heroic=CW.d.heroic||{};CW.d.heroic.fx=CW.d.heroic.fx||{kind:'none',val:5};CW.d.heroic.fx[t.dataset.cwhfx]=['val','perSl','mp'].includes(t.dataset.cwhfx)?(+t.value||0):t.value;if(needR)renderCw();return}
+    if(t.dataset.cwspb){const[i,f]=t.dataset.cwspb.split('|');const sp=CW.d.spells?.[+i];if(sp){sp[f]=t.type==='checkbox'?t.checked:t.value;renderCw()}return}
+    if(t.dataset.cwsp){const[i,f]=t.dataset.cwsp.split('|');const sp=CW.d.spells?.[+i];if(sp)sp[f]=t.type==='checkbox'?t.checked:['mp','dmg'].includes(f)?clamp(+t.value||0,0,999):t.value;if(needR)renderCw();return}
+  }
+  const c=C();
   if(t.id==='pick'){cur=t.value||null;last=null;save(1);render();return}
   if(t.dataset.wpick){W.picks=W.picks||{};W.picks[t.dataset.wpick]=t.value;renderWiz();return}
   if(t.dataset.wquirk){W.quirk=t.value;renderWiz();return}
@@ -4429,7 +4782,7 @@ document.addEventListener('change',ev=>{const t=ev.target;if(t.id==='showall'){L
   if(t.dataset.wgear){W.gear[t.dataset.wgear]=t.value;const w=RULES.weapons.find(x=>x.n===W.gear.main);if(w?.hand==='양손'){W.gear.off='';W.gear.shield=''}if(W.gear.off)W.gear.shield='';renderWiz();return}
   if(t.id==='w-theme'&&W){W.theme=t.value;renderWiz();return}
   if(!c)return;
-  if(t.id==='addcls'){const v=t.value;if(!v)return;if(v==='__custom'){const n=prompt('클래스 이름');if(n)c.classes.push({name:n,skills:[{n:'스킬',max:1,sl:1,d:''}]})}else c.classes.push({name:v,skills:CLASS[v].skills.map(s=>({n:s.n,max:s.max,sl:0,d:s.d}))});save();render();return}
+  if(t.id==='addcls'){const v=t.value;t.value='';if(!v)return;if(v==='__custom'){cwStart();return}const d=allClasses().find(k=>k.name===v);if(d){c.classes.push({name:d.name,...(d.bonus==='hp|mp'?{pick:'hp'}:{}),...(d.custom?{custom:true,bonus:d.bonus,free:[...(d.free||[])],info:d.info||'',heroic:d.heroic?JSON.parse(JSON.stringify(d.heroic)):null,spellSkill:d.spellSkill||'',classSpells:d.classSpells?JSON.parse(JSON.stringify(d.classSpells)):[]}:{}),skills:d.skills.map(s=>({n:s.n,max:s.max,sl:0,d:s.d,...(s.fx&&s.fx.kind!=='none'?{fx:JSON.parse(JSON.stringify(s.fx))}:{})}))});fixRes(c);save();render()}return}
   if(t.dataset.weapon){const w=RULES.weapons.find(x=>x.n===t.value);if(w){if(t.dataset.weapon==='off'&&w.hand==='양손'&&!(hasHero(c,'괴력의 손아귀')&&['도리깨','중량','창','검'].includes(w.cat)))return toast('이 양손 무기는 보조 손에 장비할 수 없어요',1);c.equip[t.dataset.weapon]=weaponToEq(w);if(t.dataset.weapon==='off'){c.equip.shield={name:'',def:0,mdef:0};c.equip.shield2={name:'',def:0,mdef:0};if(!canOneHand(c,c.equip.main))c.equip.main=blankW()}if(t.dataset.weapon==='main'){c.equip.shield2={name:'',def:0,mdef:0};if(w.hand==='양손'&&!canOneHand(c,w)){c.equip.off=blankW();c.equip.shield={name:'',def:0,mdef:0}}}}else c.equip[t.dataset.weapon]=blankW();save();render();return}
   if(t.dataset.mnadd){if(!t.value)return;c.mnemo=c.mnemo||[];c.mnemo.push({id:uid(),cls:t.value,sk:{},hero:'',spells:[]});save();render();return}
   if(t.dataset.mnhero){const m=(c.mnemo||[]).find(x=>x.id===t.dataset.mnhero);if(m){m.hero=t.value;save();render()}return}
@@ -4442,8 +4795,8 @@ document.addEventListener('change',ev=>{const t=ev.target;if(t.id==='showall'){L
   if(t.dataset.tri!=null){const w=RULES.weapons.find(x=>x.n===t.value);c.equip.tri=w?weaponToEq(w):blankW();if(w)c.equip.armor={name:'',base:'dex',def:0,mdef:0,init:0,martial:false};save();render();return}
   if(t.dataset.pick){c.classes[+t.dataset.pick].pick=t.value;save();render();return}
   if(t.dataset.acc){const a=RULES.acc.find(x=>x.n===t.value);if(a){c.equip.acc={gid:a.id,name:a.n,note:a.sp};save();render()}return}
-  if(t.dataset.addhero&&t.value){if(!(c.heroics||[]).some(h=>heroName(h.n)===t.value))(c.heroics=c.heroics||[]).push({n:t.value});save();render();return}
-  if(t.dataset.addspell){const def=RULES.spells[t.dataset.addspell].find(x=>x.n===t.value);if(def){c.spells.push(spellToC(def,t.dataset.addspell));save();render()}return}
+  if(t.dataset.addhero&&t.value){if(!(c.heroics||[]).some(h=>heroName(h.n)===t.value)){const h=[...RULES.heroics,...customHeroics(c)].find(x=>x.n===t.value);(c.heroics=c.heroics||[]).push({n:t.value,...(h?.custom?{custom:true}:{})});fixRes(c);save();render()}return}
+  if(t.dataset.addspell){const cls=t.dataset.addspell,def=customSpellList(cls,c).find(x=>x.n===t.value);if(def){c.spells.push(spellToC(def,cls));save();render()}return}
   if(t.id==='rdl'){const R=rollR();R.dl=t.value;LS.set('fu.sheet.roll',R);if(last?.cid===C()?.id&&!last._anim)last=null;render();return}
   if(t.dataset.spoff!=null){const sp=c.spells[+t.dataset.spoff];if(sp){sp.off=t.checked;save();render()}return}
   if(t.dataset.addmagi){const[cls,nm]=t.value.split('|'),def=(RULES.spells[cls]||[]).find(x=>x.n===nm),cap=3+((+c.level||0)>=20?2:0)+((+c.level||0)>=40?2:0);if(def){c.magispheres=c.magispheres||[];if(c.magispheres.length>=cap)return toast(`시제품은 최대 ${cap}개예요`,1);c.magispheres.push(spellToC(def,cls));save();render()}return}
@@ -4454,6 +4807,28 @@ document.addEventListener('click',async ev=>{const tb=ev.target.closest('[data-t
   const t=ev.target.closest('[data-act]');if(!t||t.classList.contains('dis'))return;const c=C();const a=t.dataset.act,i=+t.dataset.i;// greyed-out wizard choices (mastered class, maxed skill, d12) stay unpickable
   switch(a){
   /* wizards */
+  case'clswiz':cwStart();break;
+  case'cwcancel':CW=null;$('#modal').innerHTML='';break;
+  case'cwgo':if(CW){CW.i=clamp(i,0,4);renderCw()}break;
+  case'cwprev':if(CW&&CW.i>0){CW.i--;renderCw()}break;
+  case'cwnext':if(CW){if(cwValid(CW_STEPS[CW.i])){if(CW.i<4){CW.i++;renderCw()}}else toast('필수 항목(클래스명·스킬 등)을 입력해 주세요',1)}break;
+  case'cwrand':if(CW){CW.d=cwBlank(cwRand());CW.editCharIdx=null;CW.libIdx=null;renderCw();toast(`「${CW.d.name}」 초안을 생성했어요`)}break;
+  case'cwblank':if(CW){CW.d=cwBlank();CW.editCharIdx=null;CW.libIdx=null;CW.i=1;renderCw()}break;
+  case'cwtpl':{const tp=CW_TPLS[i];if(CW&&tp){CW.d=cwBlank(tp);CW.editCharIdx=null;CW.libIdx=null;CW.i=1;renderCw()}break}
+  case'cwloadlib':if(CW)cwStart({libIdx:i});break;
+  case'cweqlib':{const it=customClassLib()[i];if(!it)break;if(!c){toast('먼저 캐릭터를 만들거나 선택해 주세요',1);break}if(c.classes.some(x=>x.name===it.name)){toast('이미 보유한 클래스예요',1);break}c.classes.push({name:it.name,...(it.bonus==='hp|mp'?{pick:'hp'}:{}),custom:true,bonus:it.bonus,free:[...(it.free||[])],info:it.info||'',heroic:it.heroic?JSON.parse(JSON.stringify(it.heroic)):null,spellSkill:it.spellSkill||'',classSpells:it.classSpells?JSON.parse(JSON.stringify(it.classSpells)):[],skills:it.skills.map(s=>({n:s.n,max:s.max,sl:0,d:s.d,...(s.fx&&s.fx.kind!=='none'?{fx:JSON.parse(JSON.stringify(s.fx))}:{})}))});fixRes(c);save();CW=null;$('#modal').innerHTML='';render();toast(`「${it.name}」 클래스를 장착했어요`);break}
+  case'cwdellib':if(confirm('도감에서 이 커스텀 클래스를 지울까요?')){const lib=customClassLib();lib.splice(i,1);saveCustomClassLib(lib);if(CW&&CW.libIdx===i)CW.libIdx=null;renderCw()}break;
+  case'cwimp':{const inp=document.createElement('input');inp.type='file';inp.accept='.json,application/json';inp.onchange=()=>{const f=inp.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const raw=JSON.parse(String(r.result||''));if(Array.isArray(raw)||Array.isArray(raw?.customClasses)){const arr=Array.isArray(raw)?raw:raw.customClasses,lib=customClassLib();let n=0;for(const x of arr)if(x?.name){const norm=cwToDef(cwBlank(x));const idx=lib.findIndex(z=>z.name===norm.name);if(idx>=0)lib[idx]=norm;else lib.push(norm);n++}saveCustomClassLib(lib);renderCw();toast(`커스텀 클래스 ${n}개를 도감에 불러왔어요`)}else{const d=raw?.cls||raw;if(!d?.name)throw new Error('bad');CW.d=cwBlank(d);CW.editCharIdx=null;CW.libIdx=null;CW.i=4;renderCw();toast(`「${CW.d.name}」을(를) 불러왔어요`)}}catch{toast('유효한 클래스 JSON 파일이 아니에요',1)}};r.readAsText(f)};inp.click();break}
+  case'cwbonus':if(CW){CW.d.bonus=t.dataset.v;renderCw()}break;
+  case'cwgrant':if(CW){const v=t.dataset.v,g=CW.d.grants=CW.d.grants||[],k=g.indexOf(v);if(k>=0)g.splice(k,1);else g.push(v);renderCw()}break;
+  case'cwaddsk':if(CW){if(CW.d.skills.length>=12){toast('스킬은 최대 12개예요',1);break}CW.d.skills.push({n:'새 스킬',max:5,kind:'패시브',fx:{kind:'none'},d:''});renderCw()}break;
+  case'cwdelsk':if(CW){if(CW.d.skills.length<=1){toast('스킬은 최소 1개 이상 필요해요',1);break}CW.d.skills.splice(i,1);renderCw()}break;
+  case'cwautofill':if(CW&&CW.d.skills[i]){const sk=CW.d.skills[i];sk.d=cwFxDesc(sk.fx,sk.max)||sk.d;renderCw()}break;
+  case'cwaddsp':if(CW){CW.d.spells.push({n:'',mp:10,tg:'생물 하나',du:'즉시',off:false,dmg:15,type:'화염',d:''});renderCw()}break;
+  case'cwdelsp':if(CW){CW.d.spells.splice(i,1);renderCw()}break;
+  case'cwexp':cwExport();break;
+  case'cwsave':cwSave(false);break;
+  case'cwapply':cwSave(true);break;
   case'wizard':wizStart();break;
   case'wcancel':if(confirm('캐릭터 생성을 그만둘까요?')){W=null;renderWiz()}break;
   case'wmode':W.mode=t.dataset.v;if(W.mode==='custom')W.pick=null;renderWiz();break;
@@ -4502,11 +4877,11 @@ document.addEventListener('click',async ev=>{const tb=ev.target.closest('[data-t
   case'pickdie':{if(!last||last._anim)break;last.pick=last.pick||[];const k=last.pick.indexOf(i);k>=0?last.pick.splice(k,1):last.pick.push(i);$$('#tray .tdie').forEach((el,j)=>{el.classList.toggle('picked',last.pick.includes(j));el.setAttribute('aria-pressed',last.pick.includes(j))});break}
   case'reroll':rerollPicked();break;
   case'bond':{if(c.fp<1||!last||last._anim||TRAY.busy||last.bond)break;if(last.fumble){toast('대실패는 파뷸라 포인트로 바꿀 수 없어요',1);break}const b=c.bonds[+$('#bondsel').value];{const t=Object.values(LS.get('fu.chars',{})).find(x=>x.name===b.to);FXB.emit({type:'bond',who:c.name,to:b.to,n:bondStr(b),emo:['adm','loy','aff'].map(k=>b[k]).filter(Boolean),img:t?(t.stand?.[0]?.img||t.full||t.portrait||''):''})}c.fp--;last.bond=bondStr(b);last.note=`${b.to}에게의 유대 발동`;judge(last);save();pushLog(last);render();$('#tray .t-total')?.classList.add('bump');break}
-  case'attack':{const d=derive(c),w=t.dataset.w==='dshield'?(dualShieldOn(c)?{name:'쌍방패',cat:'격투',a1:'mig',a2:'mig',acc:0,dmg:5+d.sl('방어 숙련'),type:'물리',range:'근접'}:null):c.equip[t.dataset.w];if(!w?.name)break;const mas=w.range==='원거리'?d.sl('원거리 무기 숙련'):d.sl('근접 무기 숙련');
-    doRoll(w.a1,w.a2,(+w.acc||0)+mas+gearAccuracy(c,'atk',w),rollDL(),`${w.name} 공격 (${AB[w.a1]}+${AB[w.a2]}${mas?` · 숙련+${mas}`:''})`,{dmg:(+w.dmg||0)+heroDamage(c,'atk',w)+gearBonus(c,'atk',w),dtype:w.type});break}
+  case'attack':{const d=derive(c),w=t.dataset.w==='dshield'?(dualShieldOn(c)?{name:'쌍방패',cat:'격투',a1:'mig',a2:'mig',acc:0,dmg:5+d.sl('방어 숙련'),type:'물리',range:'근접'}:null):c.equip[t.dataset.w];if(!w?.name)break;const mas=w.range==='원거리'?d.sl('원거리 무기 숙련'):d.sl('근접 무기 숙련'),cacc=typeof customFxSum==='function'?customFxSum(c,'atkAcc',{melee:w.range!=='원거리',ranged:w.range==='원거리'}):0;
+    doRoll(w.a1,w.a2,(+w.acc||0)+mas+cacc+gearAccuracy(c,'atk',w),rollDL(),`${w.name} 공격 (${AB[w.a1]}+${AB[w.a2]}${mas?` · 숙련+${mas}`:''}${cacc?` · 커스텀+${cacc}`:''})`,{dmg:(+w.dmg||0)+heroDamage(c,'atk',w)+gearBonus(c,'atk',w),dtype:w.type});break}
   case'cast':{if(TRAY.busy||last?._anim)break;const s=c.spells[i],o=gearSpellOptions(c,{...s,mp:+s.mp||0});if(c.mp<o.mp){toast('MP가 부족해요',1);break}c.mp-=o.mp;save();abilFx('c:'+c.id,s.n,'주문',s.d);
     if(s.off)doRoll('ins','wlp',gearAccuracy(c,'spell'),rollDL(),`${s.n} 시전 · 마법 판정 (MP ${o.mp})`);else{pushLog({kind:'text',who:c.name,text:`${s.n} 시전 (MP −${o.mp})`});toast(`${s.n} 시전`);render()}break}
-  case'skpop':{const s=c.classes[+t.dataset.c].skills[+t.dataset.s];c.pop={id:uid(),n:s.n,d:String(s.d||CLASS[c.classes[+t.dataset.c].name]?.skills.find(x=>x.n===s.n)?.d||'').trim()};save();toast(`「${s.n}」 팝업을 띄웠어요`);break}
+  case'skpop':{const k=c.classes[+t.dataset.c],s=k.skills[+t.dataset.s];c.pop={id:uid(),n:s.n,d:String(s.d||clsDef(k.name,k)?.skills.find(x=>x.n===s.n)?.d||'').trim()};save();toast(`「${s.n}」 팝업을 띄웠어요`);break}
 case'skopen':t.closest('.skill').classList.toggle('open');break;
   case'hsbind':{const h=c.hs?.[t.dataset.k];if(h){h.item=c.equip?.[t.dataset.k]?.name;save();render()}break}
   case'hsmx':{const h=c.hs?.[t.dataset.k];if(h?.m){h.m=h.m.filter(x=>x!==t.dataset.id);if(!h.s?.length&&!h.m.length)delete h.item;save();render()}break}
@@ -4521,7 +4896,10 @@ case'skopen':t.closest('.skill').classList.toggle('open');break;
   case'delmagi':{if(c.magispheres)c.magispheres.splice(+t.dataset.i,1);save();render();break}
   case'tp':{const tpSl=derive(c).sl('교역의 바람'),mx=tpSl+3;c.tp=clamp((c.tp==null?2:+c.tp)+(+t.dataset.v||0),0,mx);save();render();break}
   case'cho':{const k=t.dataset.sk,v=t.dataset.v;c.picks=c.picks||{};const a=c.picks[k]=c.picks[k]||[],i=a.indexOf(v);if(i>=0)a.splice(i,1);else if(a.length<choiceMax(c,k))a.push(v);save();render();break}
-  case'sl':{const s=c.classes[+t.dataset.c].skills[+t.dataset.s];s.sl=clamp((+s.sl||0)+ +t.dataset.v,0,CLASS[c.classes[+t.dataset.c].name]?.skills.find(x=>x.n===s.n)?.max||s.max||1);save();render();break}
+  case'sl':{const k=c.classes[+t.dataset.c],s=k.skills[+t.dataset.s];s.sl=clamp((+s.sl||0)+ +t.dataset.v,0,clsDef(k.name,k)?.skills.find(x=>x.n===s.n)?.max||s.max||1);save();render();break}
+  case'cwedit':cwStart({charIdx:i});break
+  case'cwlibsave':{const k=c.classes[i];if(!k)break;const lib=customClassLib(),def=cwToDef(cwBlank(k));const x=lib.findIndex(z=>z.name===def.name);if(x>=0)lib[x]=def;else lib.push(def);saveCustomClassLib(lib);toast(`「${def.name}」을(를) 커스텀 도감에 저장했어요`);break}
+  case'delsk':{const k=c.classes[+t.dataset.c];if(k&&confirm(`'${k.skills[+t.dataset.s]?.n}' 스킬을 지울까요?`)){k.skills.splice(+t.dataset.s,1);save();render()}break}
   case'delcls':if(confirm(`${c.classes[i].name} 클래스를 지울까요?`)){c.classes.splice(i,1);save();render()}break;
   case'addsk':{const n=prompt('스킬 이름');if(n){c.classes[+t.dataset.c].skills.push({n,max:5,sl:1,d:''});save();render()}break}
   case'addsp':c.spells.push({n:'',mp:10,tg:'',du:'즉시',d:'',off:false});save();render();break;
@@ -5144,6 +5522,51 @@ html[data-theme="octo"] .oct-art-empty p{color:var(--parch2)}
 </style>
 <style id="sk-pop">
 .skill .skpopb{margin-left:10px;padding:2px 10px;font-size:12px;white-space:nowrap;vertical-align:1px}
+</style>
+<style id="cw-css">
+.cw-box{border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.04);border-radius:10px;padding:12px;margin-bottom:10px}
+.cw-sk{border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.18);border-radius:8px;padding:10px 14px;margin-bottom:8px}
+.cw-sk .row{flex-wrap:wrap;row-gap:6px}
+.cw-sk .row>label.f{flex:1 0 64px}
+.cw-sk .row>label.f:first-child{flex:2 0 190px;min-width:190px}
+.cw-sk .row>.btn,.cw-box .row>.btn{flex:0 0 auto!important;min-width:max-content}
+.wiz.cw .btn{max-width:100%;box-sizing:border-box}
+.cw-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.cw-row>*{min-width:0}
+.cw-lib{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.cw-chip-row{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.wiz.cw .f{font-size:12px;gap:4px}
+.wiz.cw .fs{max-width:100%;min-width:72px}
+.wiz .chip{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:inherit;padding:5px 10px;border-radius:999px;cursor:pointer;font-size:12px;line-height:1.3}
+.wiz .chip.on{border-color:var(--gold,#d4a853);background:rgba(212,168,83,.22);color:var(--gold-l,#ffe3a3);font-weight:700}
+.wiz .in,.wiz .sel{background:rgba(0,0,0,.28);color:#f3efe6;border:1px solid rgba(255,255,255,.18);border-radius:6px;padding:6px 9px}
+.wiz textarea.in{min-height:54px;resize:vertical}
+.srct.CUSTOM{border-color:#7be0c3;color:#7be0c3}
+html[data-theme="ff"] .wiz .cw-box{background:rgba(10,18,46,.55);border-color:rgba(155,190,255,.28)}
+html[data-theme="ff"] .wiz .cw-sk{background:rgba(6,10,32,.48);border-color:rgba(155,190,255,.2)}
+html[data-theme="ff"] .wiz .in,html[data-theme="ff"] .wiz .sel{background:rgba(8,14,38,.72);border-color:rgba(165,200,255,.3);color:#eef4ff}
+html[data-theme="octo"] .wiz.cw .wrail{color:#f0e5d1}
+html[data-theme="octo"] .wiz.cw .wrail .wt small{color:#e2be7b!important}
+html[data-theme="octo"] .wiz.cw .wrail .wt b{color:#fff7e6!important}
+html[data-theme="octo"] .wiz.cw .wrail .wstep{color:#cabba0!important}
+html[data-theme="octo"] .wiz.cw .wrail .wstep.done{color:#e6d9bf!important}
+html[data-theme="octo"] .wiz.cw .wrail .wstep.on{color:#ffffff!important}
+html[data-theme="octo"] .wiz.cw .wmain *:not(.wbtn):not(.btn){text-shadow:none!important}
+html[data-theme="octo"] .wiz.cw .wmain :is(label.f,.ck,.sub,.wtip,.wh p){color:#47331d!important}
+html[data-theme="octo"] .wiz.cw .wmain ::placeholder{color:#8b755b!important}
+html[data-theme="octo"] .wiz.cw .wmain .cw-box{background:rgba(110,74,38,.08);border-color:rgba(95,62,28,.3);color:#2a2017}
+html[data-theme="octo"] .wiz.cw .wmain .cw-sk{background:rgba(255,250,238,.72);border-color:rgba(95,62,28,.24);color:#2a2017}
+html[data-theme="octo"] .wiz.cw .wmain :is(input.in,textarea.in,.sel,.fs){background:#fffdf6!important;border:1px solid rgba(95,62,28,.38)!important;color:#2a2017!important}
+html[data-theme="octo"] .wiz.cw .wmain .chip{background:rgba(110,74,38,.12)!important;border:1px solid rgba(95,62,28,.38)!important;color:#2a2017!important}
+html[data-theme="octo"] .wiz.cw .wmain .chip.on{background:#6f3e19!important;border-color:#532c0f!important;color:#fff7e8!important}
+html[data-theme="octo"] .wiz.cw .wmain .btn.x{color:#8c281c!important;text-shadow:none!important}
+html[data-theme="octo"] .wiz.cw .wmain .wsk small{color:#7c5626!important}
+html[data-theme="octo"] .wiz.cw .wmain .wc .k{color:#e0be7c!important}
+html[data-theme="octo"] .wiz.cw .wmain .cw-sk .btn{white-space:nowrap}
+html[data-theme="octo"] .wiz.cw .wmain .wcls h4 .srct.CUSTOM{border-color:#8ff5d6!important;color:#8ff5d6!important}
+html[data-theme="octo"] .wiz.cw .wf{flex-wrap:wrap;gap:6px}
+html[data-theme="octo"] .wiz.cw .wf .wbtn{white-space:nowrap!important;width:auto!important;min-width:max-content!important;margin-left:0!important;padding:8px 16px!important}
+html[data-theme="octo"] .srct.CUSTOM{border-color:#266d5a;color:#266d5a}
 </style>
 </body>
 </html>
