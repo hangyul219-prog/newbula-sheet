@@ -181,7 +181,7 @@ textarea.in{resize:vertical;min-height:70px;line-height:1.6}
 .cls-h .btn.x{color:var(--parch2)}
 .cls-free{padding:6px 10px;font-size:12px;color:var(--ink2);border-bottom:1px dashed var(--line)}
 /* teaching-skill picks */
-.cho{margin:4px 10px 10px;padding:8px 10px;border:1px dashed var(--gl);background:rgba(0,0,0,.18)}.cho-h{display:flex;gap:8px;align-items:baseline;margin-bottom:6px}.cho-l{display:flex;flex-wrap:wrap;gap:5px}.hs-row{padding:10px 0;border-bottom:1px solid var(--line,rgba(255,255,255,.12))}.hs-row:last-child{border-bottom:0}.hs-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}.hs-h .sp{flex:1}.hs-t{width:auto;min-width:130px}.hs-cells{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}.hs-c{display:inline-flex;align-items:center;justify-content:space-between;gap:6px;min-width:96px;padding:5px 6px 5px 10px;border:1px solid var(--line,rgba(255,255,255,.25));border-radius:4px}.hs-c em{font-style:normal;font-size:12px;opacity:.85}.hs-c.empty{justify-content:center;border-style:dashed;opacity:.6}.hs-x{display:inline-grid;place-items:center;width:22px;height:22px;padding:0;border:0;background:transparent;color:inherit;cursor:pointer}.hs-add{width:100%}.hs-fx{margin:4px 0 0;line-height:1.6}.ck-i{display:inline-flex;align-items:center;gap:6px;padding:2px 4px 2px 10px;border:1px solid var(--line,rgba(255,255,255,.2));border-radius:4px;white-space:nowrap}.cho-d{margin-top:8px;font-size:13px;line-height:1.55;white-space:pre-wrap}.cho-d p{margin:0 0 6px}
+.cho{margin:4px 10px 10px;padding:8px 10px;border:1px dashed var(--gl);background:rgba(0,0,0,.18)}.cho-h{display:flex;gap:8px;align-items:baseline;margin-bottom:6px}.cho-l{display:flex;flex-wrap:wrap;gap:5px}.hs-row{padding:10px 0;border-bottom:1px solid var(--line,rgba(255,255,255,.12))}.hs-row:last-child{border-bottom:0}.hs-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}.hs-h .sp{flex:1}.hs-t{width:auto;min-width:130px}.hs-cells{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}.hs-c{display:inline-flex;align-items:center;justify-content:space-between;gap:6px;min-width:96px;padding:5px 6px 5px 10px;border:1px solid var(--line,rgba(255,255,255,.25));border-radius:4px}.hs-c em{font-style:normal;font-size:12px;opacity:.85}.hs-c.empty{justify-content:center;border-style:dashed;opacity:.6}.hs-x{display:inline-grid;place-items:center;width:22px;height:22px;padding:0;border:0;background:transparent;color:inherit;cursor:pointer}.hs-add{width:100%}.hs-fx{margin:4px 0 0;line-height:1.6}.hs-c.mn{border-style:double;border-width:3px}.hs-c.off{opacity:.55}.hs-mn{margin-top:12px;padding-top:10px;border-top:1px solid var(--line,rgba(255,255,255,.18))}.hs-mc{padding:8px 0;border-bottom:1px dashed var(--line,rgba(255,255,255,.15))}.hs-mc.off .hs-h b{text-decoration:line-through}.hs-row{padding:10px 0;border-bottom:1px solid var(--line,rgba(255,255,255,.12))}.hs-row:last-child{border-bottom:0}.hs-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}.hs-h .sp{flex:1}.hs-t{width:auto;min-width:130px}.hs-cells{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}.hs-c{display:inline-flex;align-items:center;justify-content:space-between;gap:6px;min-width:96px;padding:5px 6px 5px 10px;border:1px solid var(--line,rgba(255,255,255,.25));border-radius:4px}.hs-c em{font-style:normal;font-size:12px;opacity:.85}.hs-c.empty{justify-content:center;border-style:dashed;opacity:.6}.hs-x{display:inline-grid;place-items:center;width:22px;height:22px;padding:0;border:0;background:transparent;color:inherit;cursor:pointer}.hs-add{width:100%}.hs-fx{margin:4px 0 0;line-height:1.6}.ck-i{display:inline-flex;align-items:center;gap:6px;padding:2px 4px 2px 10px;border:1px solid var(--line,rgba(255,255,255,.2));border-radius:4px;white-space:nowrap}.cho-d{margin-top:8px;font-size:13px;line-height:1.55;white-space:pre-wrap}.cho-d p{margin:0 0 6px}
 .skill{display:grid;grid-template-columns:34px 1fr auto;gap:4px 10px;align-items:center;padding:7px 10px;border-bottom:1px dashed var(--line)}
 .skill:last-child{border-bottom:none}
 .skill .sk-ic{width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#25504c,#0b1918);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;color:var(--gold2);font-size:12px}
@@ -3375,7 +3375,7 @@ RULES.archetypes.forEach(a=>a.src=a.src||'CORE');RULES.archetypes.push(...EXT.ar
 const CHOICE_LAB={"도구": "도구", "결속과 소환": "아르카나", "춤": "춤", "상징술": "상징", "엽록술": "마법 씨앗", "테리오모르포시스": "테리오폼", "사이킥 재능": "재능"};
 const CHOICE_SK=Object.fromEntries(CLASSES.flatMap(c=>Object.entries(c.choices||{}).map(([sk,v])=>[sk,{cls:c.name,lab:CHOICE_LAB[sk]||sk,per:v.per}])));
 function choiceList(sk){const D=CHOICE_SK[sk];return D&&typeof CLASS!=='undefined'?(CLASS[D.cls]?.choices?.[sk]?.list||[]):[]}
-const choiceMax=(c,sk)=>{const s=(c.classes||[]).flatMap(k=>k.skills||[]).find(x=>x.n===sk);return(+s?.sl||0)*(CHOICE_SK[sk]?.per||1)};
+const choiceMax=(c,sk)=>{const s=(c.classes||[]).flatMap(k=>k.skills||[]).find(x=>x.n===sk);return((+s?.sl||0)+hsMnemoSl(c,sk))*(CHOICE_SK[sk]?.per||1)};
 function finite(v,d=0,min=-99999,max=99999){const n=Number(v);return Number.isFinite(n)?clamp(n,min,max):d}
 function objectOr(v,d={}){return v&&typeof v==='object'&&!Array.isArray(v)?v:d}
 function normalizeChar(c){
@@ -3456,7 +3456,7 @@ let _mig=0;function migrateAll(CH){let ch=false;for(const c of Object.values(CH|
 /* Shared heroic rules. Narrative prerequisites remain visible for table adjudication. */
 const HERO_ALIAS={};
 const heroName=n=>HERO_ALIAS[n]||n;
-const hasHero=(c,n)=>(c?.heroics||[]).some(h=>heroName(h.n)===n);
+const hasHero=(c,n)=>(c?.heroics||[]).some(h=>heroName(h.n)===n)||hsMnemoHeroes(c).includes(n);
 const heroDef=n=>RULES.heroics.find(h=>h.n===heroName(n));
 const heroScale=c=>(+c.level||0)>=40?10:5;
 const heroStatusCount=c=>Object.keys(STATUS).filter(s=>c.status?.[s]).length;
@@ -3626,7 +3626,7 @@ const gearTexts=c=>gearItems(c).map(w=>gearText(c,w));
 const gearHas=(c,re)=>gearTexts(c).some(s=>re.test(s));
 const canOneHand=(c,w)=>w?.hand!=='양손'||!gearRecord(w)?.custom&&hasHero(c,'괴력의 손아귀')&&['도리깨','중량','창','검'].includes(w.cat);
 const gearStatusNames={혼란:'dazed',동요:'shaken',둔화:'slow',약화:'weak',격노:'enraged',중독:'poisoned'};
-function resourceMax(c,type){const cl=c.classes||[],sl=n=>cl.flatMap(k=>k.skills||[]).filter(s=>s.n===n).reduce((a,s)=>a+(+s.sl||0),0),cnt=t=>cl.filter(k=>{const b=k.pick||CLASS[k.name]?.bonus;return(b==='hp|mp'?'hp':b)===t}).length;
+function resourceMax(c,type){const cl=c.classes||[],sl=n=>cl.flatMap(k=>k.skills||[]).filter(s=>s.n===n).reduce((a,s)=>a+(+s.sl||0),0)+hsMnemoSl(c,n),cnt=t=>cl.filter(k=>{const b=k.pick||CLASS[k.name]?.bonus;return(b==='hp|mp'?'hp':b)===t}).length;
  const ring=gearHas(c,/서로 다른 클래스 하나당 최대 체력과 최대 정신력이 2/)?new Set(cl.map(k=>k.name)).size*2:0;
  if(type==='hp')return Math.max(1,(+c.level||0)+5*(+c.attr.mig||0)+5*cnt('hp')+3*sl('요새')+(+c.bonus?.hp||0)+(hasHero(c,'추가 HP')?(c.level>=40?20:10):0)+ring+(gearHasName(c,'오리할콘')?10:0));
  return Math.max(0,(+c.level||0)+5*(+c.attr.wlp||0)+5*cnt('mp')+3*sl('집중')+(+c.bonus?.mp||0)+(hasHero(c,'추가 MP')?(c.level>=40?20:10):0)+ring);
@@ -3669,7 +3669,7 @@ const HS_CAP={'α':1,'β':2,'γ':3,'δ':4},HS_SLOTS=[['main','주무기'],['off'
 const hsKey=n=>String(n||'').replace(/ 호플로스피어$/,''),hsDef=n=>HS[hsKey(n)],hsSize=n=>hsDef(n)?.sz||1;
 const hsUsed=s=>(s||[]).reduce((a,n)=>a+hsSize(n),0);
 // the item a slot holds right now (riding a vehicle swaps hands/armor for modules → its spheres are idle)
-function hsHost(c,k){const it=(c.equip||{})[k],e=effectiveEquip(c)[k];return it?.name&&e?.name===it.name?it:null}
+function hsHost(c,k){const it=(c.equip||{})[k],v=c.vehicle;if(!it?.name)return null;if(v?.driving&&(k==='armor'?v.armor:(v.hands||[]).length))return null;return it}// no effectiveEquip here: derive → spheres must not loop back through vehicle checks
 function hsIsWeapon(k,it){return k!=='armor'&&!!it?.cat&&it.cat!=='-'}
 function hsSlotFx(c,k){const h=c.hs?.[k],it=hsHost(c,k);if(!h?.s?.length||!it)return null;const w=hsIsWeapon(k,it),F={sp:[],hit:[],res:[],imm:[],ign:[],conv:[],st:[],die:[]};
   const cnt={};for(const n of h.s)if(hsDef(n))cnt[hsKey(n)]=(cnt[hsKey(n)]||0)+1;
@@ -3688,6 +3688,17 @@ function hsLines(F){if(!F)return[];const L=[];const j=a=>[...new Set(a)].join('�
   if(F.die.length)L.push(`${F.die.map(a=>HS_AB[a]).join('·')} 한 단계 ↑`);if(F.st.length)L.push(`${F.st.map(s=>HS_ST[s]).join('·')} 면역`);if(F.hit.length)L.push(`명중하면 ${j(F.hit.map(s=>HS_ST[s]))}`);
   if(F.drain)L.push(`명중하면 HP·MP +${F.drain}`);if(F.def)L.push(`방어 +${F.def}`);if(F.mdef)L.push(`마방 +${F.mdef}`);if(F.init)L.push(`선제 +${F.init}`);if(F.hp)L.push(`HP 회복 +${F.hp}`);if(F.mp)L.push(`MP 회복 +${F.mp}`);
   if(F.pot)L.push(`포션 회복 +${F.pot}`);if(F.spell)L.push(`주문 피해·회복 +${F.spell}`);if(F.open)L.push(`살펴보기 판정 +${F.open} (GM 적용)`);return L}
+/* 므네모스피어: class-skill spheres. c.mnemo=[{id,cls,sk:{skill:SL},hero,spells:[spell objects]}], placed by id in c.hs[k].m (one slot each).
+   A sphere that grants a skill the hero already has from their own classes is switched off (룰북: 그 물건을 장비할 수 없다). No free benefits, no rituals/projects. */
+const HS_MCAP={'α':1,'β':1,'γ':2,'δ':2},HS_MREC=['로그','챈터','키메리스트','커맨더','댄서','엘리멘탈리스트','엔트로피스트','에스퍼','퓨리','가디언','웨폰마스터','오레이터','로어마스터','스피리티스트','샤프슈터'];
+const hsMLv=m=>Object.values(m?.sk||{}).reduce((a,v)=>a+(+v||0),0),hsMSk=m=>Object.keys(m?.sk||{}).filter(n=>+m.sk[n]>0);
+function hsMnemos(c){const out=[],inn=new Set((c.classes||[]).flatMap(k=>(k.skills||[]).filter(s=>+s.sl>0).map(s=>s.n)));
+  for(const m of c.mnemo||[])m._off=false;
+  for(const[k]of HS_SLOTS){const h=c.hs?.[k];if(!h?.m?.length||!hsHost(c,k))continue;for(const id of h.m){const m=(c.mnemo||[]).find(x=>x.id===id);if(!m)continue;m._off=hsMSk(m).some(n=>inn.has(n));if(!m._off)out.push(m)}}return out}
+const hsMnemoSl=(c,n)=>c?.mnemo?.length?hsMnemos(c).reduce((a,m)=>a+(+m.sk?.[n]||0),0):0;
+const hsMnemoHeroes=c=>c?.mnemo?.length?hsMnemos(c).filter(m=>hsMLv(m)>=5&&m.hero).map(m=>m.hero):[];
+const hsMnemoSpells=c=>c?.mnemo?.length?hsMnemos(c).flatMap(m=>m.spells||[]):[];
+function hsMnemoSkills(c){return c?.mnemo?.length?hsMnemos(c).flatMap(m=>hsMSk(m).map(n=>({cls:'므네모스피어 · '+m.cls,n,sl:+m.sk[n],max:CLASSES.find(k=>k.name===m.cls)?.skills?.find(s=>s.n===n)?.max||1,d:CLASSES.find(k=>k.name===m.cls)?.skills?.find(s=>s.n===n)?.d||'',mnemo:true}))):[]}
 /* ===HS-CORE-END=== */
 function gearDefense(c,kind){let n=hsFx(c)[kind]||0;for(const w of gearItems(c)){
   const s=w.sp;if(s.includes('이미 반영됨'))continue;
@@ -3800,7 +3811,7 @@ function gearOnHit(actor,w,rows,kind,sourceText){const hit=rows.filter(r=>r.hit)
 
 function derive(c){
   const cl=c.classes||[];const cnt=t=>cl.filter(k=>{const b=k.pick||CLASS[k.name]?.bonus;return(b==='hp|mp'?'hp':b)===t}).length;// 'hp|mp' classes store the player's pick; unpicked counts as HP like the selector shows
-  const sl=n=>gearSkill(c,n,cl.reduce((s,k)=>s+(k.skills||[]).filter(x=>x.n===n).reduce((a,x)=>a+(+x.sl||0),0),0));
+  const sl=n=>gearSkill(c,n,cl.reduce((s,k)=>s+(k.skills||[]).filter(x=>x.n===n).reduce((a,x)=>a+(+x.sl||0),0),0)+hsMnemoSl(c,n));
   const b=c.bonus||{},eq=effectiveEquip(c),ar=eq.armor||{},sh=eq.shield||{};
   const cur=Object.fromEntries(Object.keys(ATTR).map(k=>[k,curDie(c,k)]));
   const maxHp=resourceMax(c,'hp');
@@ -4150,15 +4161,32 @@ if(t.dataset.moduleHand!=null){v.hands=v.hands||['',''];v.hands[+t.dataset.modul
 if(t.dataset.moduleSupport){const a=new Set(v.support||[]);t.checked?a.add(t.dataset.moduleSupport):a.delete(t.dataset.moduleSupport);v.support=[...a]}
 if(v.driving&&gearVehicleErrors(c).length){v.driving=false;toast('구성을 확인한 뒤 운전을 켜 주세요',1)}save(1);render()});
 
-// 테크노스피어 구슬 칸: slot grade per equipped weapon/armor, spheres in it, and what is active (응결 included)
-function hsPanel(c){const S=GEAR_CATALOG.filter(x=>x.kind==='spheres');
-  return HS_SLOTS.map(([k,l])=>{const it=(c.equip||{})[k];if(!it?.name)return'';const h=c.hs?.[k]||{t:'α',s:[]},cap=HS_CAP[h.t]||1,used=hsUsed(h.s),w=hsIsWeapon(k,it),F=hsSlotFx(c,k),sp=n=>S.find(x=>x.n===n)?.sp||'';
-    const cells=(h.s||[]).map((n,i)=>`<span class="hs-c" style="flex:${hsSize(n)}" title="${esc(sp(n))}"><b>${esc(hsKey(n))}</b>${F?.cnt?.[hsKey(n)]>1&&HS[hsKey(n)]?.c2?`<em>응결 ${Math.min(3,F.cnt[hsKey(n)])}</em>`:''}<button class="hs-x" data-act="hsx" data-k="${k}" data-i="${i}" aria-label="${esc(hsKey(n))} 빼기"><i class="gi" data-ic="minus"></i></button></span>`).join('')+Array(Math.max(0,cap-used)).fill('<span class="hs-c empty">빈 칸</span>').join('');
+/* ===HS-SHEET=== */
+// 테크노스피어 구슬 칸 (sheet): slot grade per equipped weapon/armor, hoplospheres + mnemospheres in it, what is active (응결 included)
+function hsPanel(c){const S=GEAR_CATALOG.filter(x=>x.kind==='spheres'),sp=n=>S.find(x=>x.n===n)?.sp||'';hsMnemos(c);
+  const placed=new Set(HS_SLOTS.flatMap(([k])=>c.hs?.[k]?.m||[]));
+  const rows=HS_SLOTS.map(([k,l])=>{const it=(c.equip||{})[k];if(!it?.name)return'';const h=c.hs?.[k]||{t:'α',s:[]},cap=HS_CAP[h.t]||1,M=(h.m||[]).map(id=>(c.mnemo||[]).find(m=>m.id===id)).filter(Boolean),used=hsUsed(h.s)+M.length,w=hsIsWeapon(k,it),F=hsSlotFx(c,k);
+    const cells=(h.s||[]).map((n,i)=>`<span class="hs-c" style="flex:${hsSize(n)}" title="${esc(sp(n))}"><b>${esc(hsKey(n))}</b>${F?.cnt?.[hsKey(n)]>1&&HS[hsKey(n)]?.c2?`<em>응결 ${Math.min(3,F.cnt[hsKey(n)])}</em>`:''}<button class="hs-x" data-act="hsx" data-k="${k}" data-i="${i}" aria-label="${esc(hsKey(n))} 빼기"><i class="gi" data-ic="minus"></i></button></span>`).join('')
+      +M.map(m=>`<span class="hs-c mn${m._off?' off':''}" title="${esc(hsMSk(m).map(n=>n+' '+m.sk[n]).join(', '))}"><b>${esc(m.cls)}</b><em>Lv ${hsMLv(m)}${m._off?' · 꺼짐':''}</em><button class="hs-x" data-act="hsmx" data-k="${k}" data-id="${m.id}" aria-label="${esc(m.cls)} 므네모스피어 빼기"><i class="gi" data-ic="minus"></i></button></span>`).join('')
+      +Array(Math.max(0,cap-used)).fill('<span class="hs-c empty">빈 칸</span>').join('');
     const fit=S.filter(x=>(!x.weaponOnly||w)&&hsSize(x.n)<=cap-used);
-    return`<div class="hs-row"><div class="hs-h"><b>${l}</b><span class="muted">${esc(it.name)}</span><span class="sp"></span><select class="sel hs-t" data-hst="${k}" aria-label="${l} 슬롯 등급">${Object.keys(HS_CAP).filter(t=>t!=='δ'||w).map(t=>`<option value="${t}"${t===h.t?' selected':''}>${t} 슬롯 · ${HS_CAP[t]}칸</option>`).join('')}</select></div>
+    const mfit=used<cap&&M.length<(HS_MCAP[h.t]||1)?(c.mnemo||[]).filter(m=>!placed.has(m.id)&&hsMLv(m)>0&&!M.some(o=>hsMSk(o).some(n=>hsMSk(m).includes(n)))):[];
+    return`<div class="hs-row"><div class="hs-h"><b>${l}</b><span class="muted">${esc(it.name)}</span><span class="sp"></span><select class="sel hs-t" data-hst="${k}" aria-label="${l} 슬롯 등급">${Object.keys(HS_CAP).filter(t=>t!=='δ'||w).map(t=>`<option value="${t}"${t===h.t?' selected':''}>${t} 슬롯 · ${HS_CAP[t]}칸${HS_MCAP[t]>1?` (므네모 ${HS_MCAP[t]})`:''}</option>`).join('')}</select></div>
      <div class="hs-cells">${cells}</div>
      ${fit.length&&used<cap?`<select class="sel hs-add" data-hsadd="${k}" aria-label="${l}에 호플로스피어 끼우기"><option value="">+ 호플로스피어 끼우기 (${cap-used}칸 남음)</option>${fit.map(x=>`<option value="${esc(x.n)}">${esc(hsKey(x.n))}${hsSize(x.n)>1?` · ${hsSize(x.n)}칸`:''}${x.weaponOnly?' · 무기':''}</option>`).join('')}</select>`:''}
-     ${F&&hsLines(F).length?`<p class="hs-fx">${hsLines(F).map(esc).join(' · ')}</p>`:''}</div>`}).join('')||'<p class="muted">무기나 방어구를 장비하면 구슬 칸이 생겨요.</p>'}
+     ${mfit.length?`<select class="sel hs-add" data-hsmadd="${k}" aria-label="${l}에 므네모스피어 넣기"><option value="">+ 므네모스피어 넣기</option>${mfit.map(m=>`<option value="${m.id}">${esc(m.cls)} · Lv ${hsMLv(m)}</option>`).join('')}</select>`:''}
+     ${F&&hsLines(F).length?`<p class="hs-fx">${hsLines(F).map(esc).join(' · ')}</p>`:''}${M.some(m=>m._off)?'<p class="warn hs-fx">이미 가진 스킬과 겹치는 므네모스피어는 꺼져 있어요.</p>':''}</div>`}).join('')||'<p class="muted">무기나 방어구를 장비하면 구슬 칸이 생겨요.</p>';
+  return rows+hsMnemoPanel(c,placed)}
+function hsHeroList(cls){return(RULES.heroics||[]).filter(h=>!h.req||String(h.req).includes(cls)).map(h=>h.n)}
+function hsMnemoPanel(c,placed){const L=c.mnemo||[];
+  return`<div class="hs-mn"><div class="hs-h"><b>므네모스피어</b><span class="muted">클래스 스킬을 담은 구슬 · 최대 Lv 5 · 무료 혜택·의식·프로젝트는 주지 않아요</span></div>
+  ${L.map(m=>{const K=CLASSES.find(k=>k.name===m.cls),lv=hsMLv(m),ss=SPELL_SKILL[m.cls],nsp=ss?+(m.sk?.[ss]||0):0;
+    return`<div class="hs-mc${m._off?' off':''}"><div class="hs-h"><b>${esc(m.cls)}</b><span class="muted">Lv ${lv} / 5 · ${placed.has(m.id)?'장착 중':'보관 중'}${m._off?' · 이미 가진 스킬과 겹쳐 꺼짐':''}</span><span class="sp"></span><button class="btn x" data-act="mnx" data-id="${m.id}">삭제</button></div>
+     <div class="cho-l">${(K?.skills||[]).map(s=>{const v=+(m.sk?.[s.n]||0);return`<span class="ck-i" title="${esc(s.d||'')}">${esc(s.n)}<span class="sl"><button data-act="mnsk" data-id="${m.id}" data-n="${esc(s.n)}" data-v="-1"${v?'':' disabled'} aria-label="${esc(s.n)} 내리기"><i class="gi" data-ic="minus"></i></button><b>${v}</b><button data-act="mnsk" data-id="${m.id}" data-n="${esc(s.n)}" data-v="1"${v<(s.max||1)&&lv<5?'':' disabled'} aria-label="${esc(s.n)} 올리기"><i class="gi" data-ic="plus"></i></button></span></span>`}).join('')}</div>
+     ${nsp?`<div class="cho-h" style="margin-top:6px"><b>${esc(ss)} 주문</b><span class="muted">${(m.spells||[]).length} / ${nsp}</span></div><div class="cho-l">${(RULES.spells?.[m.cls]||[]).map(x=>{const on=(m.spells||[]).some(y=>y.n===x.n);return`<button class="chip${on?' on':''}" data-act="mnsp" data-id="${m.id}" data-v="${esc(x.n)}" title="${esc(x.d||'')}"${!on&&(m.spells||[]).length>=nsp?' disabled':''}>${esc(x.n)}</button>`}).join('')}</div>`:''}
+     ${lv>=5?`<select class="sel" data-mnhero="${m.id}" aria-label="마스터 영웅 스킬"><option value="">— 마스터 보상: 영웅 스킬 고르기 —</option>${hsHeroList(m.cls).map(h=>`<option value="${esc(h)}"${h===m.hero?' selected':''}>${esc(h)}</option>`).join('')}</select>`:''}</div>`}).join('')}
+  <select class="sel" data-mnadd="1" aria-label="므네모스피어 추가"><option value="">+ 므네모스피어 추가 (추천 클래스)</option>${HS_MREC.map(n=>`<option value="${n}">${n}</option>`).join('')}</select></div>`}
+/* ===HS-SHEET-END=== */
 function pEquip(c,d){const e=c.equip;const okA=allowed(c,'armor'),okS=allowed(c,'shield');
   return card('장비','EQUIPMENT',`${weaponSlot(c,'main','주무기','s-main')}${weaponSlot(c,'off','보조 무기','s-off')}
   <div class="slotc"><div class="sic"><i class="gi" data-ic="s-armor"></i></div><div><div class="t">방어구<em>ARMOR</em></div>
@@ -4381,6 +4409,9 @@ document.addEventListener('change',ev=>{const t=ev.target;if(t.id==='showall'){L
   if(!c)return;
   if(t.id==='addcls'){const v=t.value;if(!v)return;if(v==='__custom'){const n=prompt('클래스 이름');if(n)c.classes.push({name:n,skills:[{n:'스킬',max:1,sl:1,d:''}]})}else c.classes.push({name:v,skills:CLASS[v].skills.map(s=>({n:s.n,max:s.max,sl:0,d:s.d}))});save();render();return}
   if(t.dataset.weapon){const w=RULES.weapons.find(x=>x.n===t.value);if(w){if(t.dataset.weapon==='off'&&w.hand==='양손'&&!(hasHero(c,'괴력의 손아귀')&&['도리깨','중량','창','검'].includes(w.cat)))return toast('이 양손 무기는 보조 손에 장비할 수 없어요',1);c.equip[t.dataset.weapon]=weaponToEq(w);if(t.dataset.weapon==='off'){c.equip.shield={name:'',def:0,mdef:0};if(!canOneHand(c,c.equip.main))c.equip.main=blankW()}if(t.dataset.weapon==='main'&&w.hand==='양손'&&!canOneHand(c,w)){c.equip.off=blankW();c.equip.shield={name:'',def:0,mdef:0}}}save();render();return}
+  if(t.dataset.mnadd){if(!t.value)return;c.mnemo=c.mnemo||[];c.mnemo.push({id:uid(),cls:t.value,sk:{},hero:'',spells:[]});save();render();return}
+  if(t.dataset.mnhero){const m=(c.mnemo||[]).find(x=>x.id===t.dataset.mnhero);if(m){m.hero=t.value;save();render()}return}
+  if(t.dataset.hsmadd){const k=t.dataset.hsmadd,v=t.value;if(!v)return;c.hs=c.hs||{};const h=c.hs[k]=c.hs[k]||{t:'α',s:[]};h.m=h.m||[];if(hsUsed(h.s)+h.m.length+1>(HS_CAP[h.t]||1)||h.m.length+1>(HS_MCAP[h.t]||1))return toast('칸이 모자라요',1);h.m.push(v);save();render();return}
   if(t.dataset.hst){const k=t.dataset.hst;c.hs=c.hs||{};const h=c.hs[k]=c.hs[k]||{t:'α',s:[]};h.t=t.value;let cut=0;while(hsUsed(h.s)>(HS_CAP[h.t]||1)){h.s.pop();cut++}if(cut)toast(`칸이 줄어 호플로스피어 ${cut}개를 뺐어요`);save();render();return}
   if(t.dataset.hsadd){const k=t.dataset.hsadd,v=t.value;if(!v)return;c.hs=c.hs||{};const h=c.hs[k]=c.hs[k]||{t:'α',s:[]};if(hsUsed(h.s)+hsSize(v)>(HS_CAP[h.t]||1))return toast('칸이 모자라요',1);h.s.push(v);save();render();return}
   if(t.dataset.armor){const a=RULES.armor.find(x=>x.n===t.value);c.equip.armor=armorToEq(a);save();render();return}
@@ -4450,6 +4481,10 @@ document.addEventListener('click',async ev=>{const tb=ev.target.closest('[data-t
     if(s.off)doRoll('ins','wlp',gearAccuracy(c,'spell'),rollDL(),`${s.n} 시전 · 마법 판정 (MP ${o.mp})`);else{pushLog({kind:'text',who:c.name,text:`${s.n} 시전 (MP −${o.mp})`});toast(`${s.n} 시전`);render()}break}
   case'skpop':{const s=c.classes[+t.dataset.c].skills[+t.dataset.s];c.pop={id:uid(),n:s.n,d:String(s.d||CLASS[c.classes[+t.dataset.c].name]?.skills.find(x=>x.n===s.n)?.d||'').trim()};save();toast(`「${s.n}」 팝업을 띄웠어요`);break}
 case'skopen':t.closest('.skill').classList.toggle('open');break;
+  case'hsmx':{const h=c.hs?.[t.dataset.k];if(h?.m){h.m=h.m.filter(x=>x!==t.dataset.id);save();render()}break}
+  case'mnx':{if(!confirm('이 므네모스피어를 지울까요?'))break;c.mnemo=(c.mnemo||[]).filter(x=>x.id!==t.dataset.id);for(const h of Object.values(c.hs||{}))if(h.m)h.m=h.m.filter(x=>x!==t.dataset.id);save();render();break}
+  case'mnsk':{const m=(c.mnemo||[]).find(x=>x.id===t.dataset.id),n=t.dataset.n,dv=+t.dataset.v;if(!m)break;m.sk=m.sk||{};const mx=CLASSES.find(k=>k.name===m.cls)?.skills?.find(s=>s.n===n)?.max||1,nv=Math.max(0,Math.min(mx,(+m.sk[n]||0)+dv));if(dv>0&&hsMLv(m)>=5)break;m.sk[n]=nv;if(!nv)delete m.sk[n];const ss=SPELL_SKILL[m.cls];if(ss&&m.spells)m.spells=m.spells.slice(0,+(m.sk[ss]||0));if(hsMLv(m)<5)m.hero='';save();render();break}
+  case'mnsp':{const m=(c.mnemo||[]).find(x=>x.id===t.dataset.id);if(!m)break;m.spells=m.spells||[];const i=m.spells.findIndex(x=>x.n===t.dataset.v);if(i>=0)m.spells.splice(i,1);else{const x=(RULES.spells?.[m.cls]||[]).find(y=>y.n===t.dataset.v);if(x&&m.spells.length<+(m.sk?.[SPELL_SKILL[m.cls]]||0))m.spells.push({...x,cls:m.cls})}save();render();break}
   case'hsx':{const h=c.hs?.[t.dataset.k];if(h){h.s.splice(+t.dataset.i,1);save();render()}break}
   case'cook':{const t2=t.dataset.t;c.cook=c.cook||{};c.cook.ing=c.cook.ing||{};c.cook.ing[t2]=Math.max(0,(+c.cook.ing[t2]||0)+ +t.dataset.v);save();render();break}
   case'cookdel':{if(c.cook?.book)delete c.cook.book[t.dataset.k];save();render();break}
