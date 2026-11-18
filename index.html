@@ -181,7 +181,7 @@ textarea.in{resize:vertical;min-height:70px;line-height:1.6}
 .cls-h .btn.x{color:var(--parch2)}
 .cls-free{padding:6px 10px;font-size:12px;color:var(--ink2);border-bottom:1px dashed var(--line)}
 /* teaching-skill picks */
-.cho{margin:4px 10px 10px;padding:8px 10px;border:1px dashed var(--gl);background:rgba(0,0,0,.18)}.cho-h{display:flex;gap:8px;align-items:baseline;margin-bottom:6px}.cho-l{display:flex;flex-wrap:wrap;gap:5px}.ck-i{display:inline-flex;align-items:center;gap:6px;padding:2px 4px 2px 10px;border:1px solid var(--line,rgba(255,255,255,.2));border-radius:4px;white-space:nowrap}.cho-d{margin-top:8px;font-size:13px;line-height:1.55;white-space:pre-wrap}.cho-d p{margin:0 0 6px}
+.cho{margin:4px 10px 10px;padding:8px 10px;border:1px dashed var(--gl);background:rgba(0,0,0,.18)}.cho-h{display:flex;gap:8px;align-items:baseline;margin-bottom:6px}.cho-l{display:flex;flex-wrap:wrap;gap:5px}.hs-row{padding:10px 0;border-bottom:1px solid var(--line,rgba(255,255,255,.12))}.hs-row:last-child{border-bottom:0}.hs-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}.hs-h .sp{flex:1}.hs-t{width:auto;min-width:130px}.hs-cells{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}.hs-c{display:inline-flex;align-items:center;justify-content:space-between;gap:6px;min-width:96px;padding:5px 6px 5px 10px;border:1px solid var(--line,rgba(255,255,255,.25));border-radius:4px}.hs-c em{font-style:normal;font-size:12px;opacity:.85}.hs-c.empty{justify-content:center;border-style:dashed;opacity:.6}.hs-x{display:inline-grid;place-items:center;width:22px;height:22px;padding:0;border:0;background:transparent;color:inherit;cursor:pointer}.hs-add{width:100%}.hs-fx{margin:4px 0 0;line-height:1.6}.ck-i{display:inline-flex;align-items:center;gap:6px;padding:2px 4px 2px 10px;border:1px solid var(--line,rgba(255,255,255,.2));border-radius:4px;white-space:nowrap}.cho-d{margin-top:8px;font-size:13px;line-height:1.55;white-space:pre-wrap}.cho-d p{margin:0 0 6px}
 .skill{display:grid;grid-template-columns:34px 1fr auto;gap:4px 10px;align-items:center;padding:7px 10px;border-bottom:1px dashed var(--line)}
 .skill:last-child{border-bottom:none}
 .skill .sk-ic{width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#25504c,#0b1918);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;color:var(--gold2);font-size:12px}
@@ -3567,7 +3567,7 @@ function effectiveEquip(c){const e=c.equip||{},v=gearVehicle(c);if(!v)return e;c
  return{main:v.hands.length?(v.hands[0]?.moduleKind==='weapon'?v.hands[0]:null):e.main,off:v.hands.length?(v.hands[1]?.moduleKind==='weapon'?v.hands[1]:null):e.off,shield:v.hands.length?(v.hands.find(x=>x.moduleKind==='shield')||{}):e.shield,armor:a||e.armor||{},acc:e.acc}}
 function effectiveGearItems(c){const e=effectiveEquip(c),v=gearVehicle(c);return Object.entries(e).filter(([,w])=>w?.name).map(([slot,w])=>({...w,slot,sp:w.sp||w.note||''})).concat(v?v.support.map((w,i)=>({...w,slot:'support:'+i})):[])}
 function gearText(c,w){const r=gearRecord(w);if(r&&r.src!=='CORE')return '';return w.sp||''}
-function gearAttr(c,k){return k==='dex'&&gearHasName(c,'무희의 리본')?2:0}
+function gearAttr(c,k){return(k==='dex'&&gearHasName(c,'무희의 리본')?2:0)+(hsFx(c).die.has(k)?2:0)}
 function gearSkill(c,n,v){if(!v)return v;const items=gearItems(c),boosts={'저격 소총':['매의 눈',3,8],'연구원 제복':['비밀 공식',2,7],'북방패':['공명',2,5],'국자':['정성 가득',1,4],'아스클레피오스 형태 I':['치유력',1,3],'아스클레피오스 형태 II':['치유력',1,3]};
  for(const w of items){const b=boosts[w.name];if(b&&gearSkillKey(n)===gearSkillKey(b[0]))v=Math.min(b[2],v+b[1])}return v}
 function gearTargetOptions(c,w,t,kind,count){let o={...w,actorId:c.id};const n=w.name||w.n;
@@ -3648,12 +3648,48 @@ function gearImmune(c,k){const n=Object.keys(gearStatusNames).find(n=>gearStatus
   return /모든 상태 이상에 면역/.test(s)||n&&new RegExp(n+'에 면역').test(s);
 })}
 // Numeric armor modifiers already include their annotated special effect.
-function gearInitiative(c){let n=0;for(const w of gearItems(c)){
+function gearInitiative(c){let n=hsFx(c).init;for(const w of gearItems(c)){
  const s=gearText(c,w),m=s.match(/^선제권 수정치에 \+(\d+) 보너스/);
  if(!m||s.includes('이미 반영됨')||w.slot==='armor'&&Number(w.init)===+m[1])continue;
  n+=+m[1];
 }return n}
-function gearDefense(c,kind){let n=0;for(const w of gearItems(c)){
+/* ===HS-CORE=== */
+/* ================= 테크노스피어 · 호플로스피어: spheres sit in equipment slots (c.hs = {main|off|armor: {t:'α'|'β'|'γ'|'δ', s:[names]}}) =================
+   b = per sphere; c2/c3 = [응결] — once that many of the same sphere share one item, every copy adds it too (룰북: 검투사 ×3 → 인간형 +6, 방어 +3).
+   effect keys: acc dmg sp:[species,n] die res wt imm ign conv st open hp mp init def mdef drain multi hit pot pierce pierceImm vsM spell; w = weapon only, sz = slots taken */
+const HS_EL=(t)=>({b:{res:t,wt:t},c2:{imm:t},c3:{ign:t,conv:t}});
+const HS={예리:{w:1,b:{acc:1},c2:{dmg:2}},민첩:{sz:2,b:{die:'dex'}},대담:{sz:2,b:{die:'wlp'}},강력:{sz:2,b:{die:'mig'}},계시:{sz:2,b:{die:'ins'}},
+  기사:{w:1,b:{sp:['몬스터',2]},c2:{mdef:1}},축성:{w:1,b:{sp:['언데드',2]},c2:{mdef:1}},오컬트:{w:1,b:{sp:['정령',2]},c2:{mdef:1}},회의:{w:1,b:{sp:['악마',2]},c2:{mdef:1}},
+  풀베기:{w:1,b:{sp:['식물',2]},c2:{def:1}},검투사:{w:1,b:{sp:['인간형',2]},c2:{def:1}},포식자:{w:1,b:{sp:['야수',2]},c2:{def:1}},'파괴 공작':{w:1,b:{sp:['인공체',2]},c2:{def:1}},
+  극지:HS_EL('냉기'),사이클론:HS_EL('바람'),광휘:HS_EL('빛'),암흑:HS_EL('어둠'),지진:HS_EL('대지'),맹독:HS_EL('독'),전류:HS_EL('번개'),화산:HS_EL('화염'),
+  수정:{b:{st:'dazed'},c2:{open:2}},활력:{b:{st:'weak'},c2:{hp:2}},신속:{b:{st:'slow'},c2:{init:2}},끈기:{b:{st:'shaken'},c2:{mp:2}},
+  흡수:{w:1,b:{drain:3}},확산:{w:1,sz:2,b:{multi:2}},증오:{w:1,sz:3,b:{hit:'enraged'}},기절:{w:1,sz:2,b:{hit:'dazed'}},소진:{w:1,sz:2,b:{hit:'weak'}},망령:{w:1,sz:2,b:{hit:'shaken'}},유독:{w:1,sz:3,b:{hit:'poisoned'}},속박:{w:1,sz:2,b:{hit:'slow'}},
+  의료:{b:{pot:2},c2:{pot:1}},관통:{w:1,b:{pierce:1},c2:{pierceImm:1}},마력:{w:1,b:{vsM:1},c2:{spell:2}}};
+const HS_CAP={'α':1,'β':2,'γ':3,'δ':4},HS_SLOTS=[['main','주무기'],['off','보조 무기'],['armor','방어구']];
+const hsKey=n=>String(n||'').replace(/ 호플로스피어$/,''),hsDef=n=>HS[hsKey(n)],hsSize=n=>hsDef(n)?.sz||1;
+const hsUsed=s=>(s||[]).reduce((a,n)=>a+hsSize(n),0);
+// the item a slot holds right now (riding a vehicle swaps hands/armor for modules → its spheres are idle)
+function hsHost(c,k){const it=(c.equip||{})[k],e=effectiveEquip(c)[k];return it?.name&&e?.name===it.name?it:null}
+function hsIsWeapon(k,it){return k!=='armor'&&!!it?.cat&&it.cat!=='-'}
+function hsSlotFx(c,k){const h=c.hs?.[k],it=hsHost(c,k);if(!h?.s?.length||!it)return null;const w=hsIsWeapon(k,it),F={sp:[],hit:[],res:[],imm:[],ign:[],conv:[],st:[],die:[]};
+  const cnt={};for(const n of h.s)if(hsDef(n))cnt[hsKey(n)]=(cnt[hsKey(n)]||0)+1;
+  for(const[n,k2]of Object.entries(cnt)){const d=HS[n];if(d.w&&!w)continue;for(const[lv,fx]of[[1,d.b],[2,d.c2],[3,d.c3]]){if(!fx||k2<lv)continue;
+    for(const[x,v]of Object.entries(fx)){if(x==='wt'&&!w)continue;if(x==='sp')F.sp.push([v[0],v[1]*k2]);else if(Array.isArray(F[x]))F[x].push(v);else F[x]=(F[x]||0)+(typeof v==='number'?v*k2:0)||v}}}
+  F.cnt=cnt;F.weapon=w;F.name=it.name;return F}
+function hsFx(c){const A={res:new Set,imm:new Set,ign:new Set,conv:new Set,st:new Set,die:new Set,def:0,mdef:0,init:0,hp:0,mp:0,pot:0,open:0,spell:0,slots:{}};if(!c?.hs)return A;
+  for(const[k]of HS_SLOTS){const F=hsSlotFx(c,k);if(!F)continue;A.slots[k]=F;for(const x of['res','imm','ign','conv','st','die'])for(const v of F[x])A[x].add(v);for(const x of['def','mdef','init','hp','mp','pot','open','spell'])A[x]+=+F[x]||0}
+  return A}
+// the weapon option an attack uses → its slot's sphere effects
+function hsWeapon(c,name){const S=hsFx(c).slots;return Object.values(S).find(F=>F.weapon&&F.name===name)||null}
+const HS_ST={dazed:'혼란',enraged:'격노',poisoned:'중독',shaken:'동요',slow:'둔화',weak:'약화'},HS_AB={dex:'DEX',ins:'INS',mig:'MIG',wlp:'WLP'};
+function hsLines(F){if(!F)return[];const L=[];const j=a=>[...new Set(a)].join('·');
+  if(F.acc)L.push(`명중 +${F.acc}`);if(F.dmg)L.push(`피해 +${F.dmg}`);for(const[s,n]of F.sp)L.push(`${s}에게 +${n}`);if(F.multi)L.push('다중(2)');if(F.vsM)L.push('마법 방어도 대상');if(F.pierce)L.push('저항 무시');if(F.pierceImm)L.push('면역 무시');
+  if(F.wt)L.push(`무기 피해 ${F.wt}`);if(F.res.length)L.push(`${j(F.res)} 저항`);if(F.imm.length)L.push(`${j(F.imm)} 면역`);if(F.ign.length)L.push(`내 ${j(F.ign)} 피해는 저항 무시`);if(F.conv.length)L.push(`피해를 ${j(F.conv)}(으)로 바꿀 수 있음`);
+  if(F.die.length)L.push(`${F.die.map(a=>HS_AB[a]).join('·')} 한 단계 ↑`);if(F.st.length)L.push(`${F.st.map(s=>HS_ST[s]).join('·')} 면역`);if(F.hit.length)L.push(`명중하면 ${j(F.hit.map(s=>HS_ST[s]))}`);
+  if(F.drain)L.push(`명중하면 HP·MP +${F.drain}`);if(F.def)L.push(`방어 +${F.def}`);if(F.mdef)L.push(`마방 +${F.mdef}`);if(F.init)L.push(`선제 +${F.init}`);if(F.hp)L.push(`HP 회복 +${F.hp}`);if(F.mp)L.push(`MP 회복 +${F.mp}`);
+  if(F.pot)L.push(`포션 회복 +${F.pot}`);if(F.spell)L.push(`주문 피해·회복 +${F.spell}`);if(F.open)L.push(`살펴보기 판정 +${F.open} (GM 적용)`);return L}
+/* ===HS-CORE-END=== */
+function gearDefense(c,kind){let n=hsFx(c)[kind]||0;for(const w of gearItems(c)){
   const s=w.sp;if(s.includes('이미 반영됨'))continue;
   if(s.includes('충성이나 애정의 유대가 3개 이상')&&(c.bonds||[]).filter(b=>b.loy||b.aff).length<3)continue;
   if(s.includes('존경의 유대가 2개 이상')&&(c.bonds||[]).filter(b=>b.adm).length<2)continue;
@@ -3702,7 +3738,7 @@ function damageResult(t,n,type,opt={}){n=Math.max(0,Number.isFinite(+n)?+n:0);co
   if(g&&!opt.ignoreRes&&!['im','ab'].includes(a))m=a==='vu'?1:.5;
   const v=Math.floor(n*m);return{n:v,a,note:' · '+(a==='ab'?'흡수(회복)':a==='im'&&!opt.ignoreImm?'면역':v)};
 }
-function gearRecovery(actor,target,key,n,source){if(!n)return 0;let v=n;
+function gearRecovery(actor,target,key,n,source){if(!n)return 0;let v=n;if(source==='item'&&actor)v+=hsFx(actor).pot;
  for(const s of gearTexts(target))if(new RegExp((key==='hp'?'체력':'정신력')+'을 회복할 때마다.*5').test(s))v+=5;
  for(const s of gearTexts(actor||{})){
   if(source==='spell'&&key==='hp'&&/자신이 시전(?:한 주문의 효과로|하는 주문 중).*체력을.*5/.test(s))v+=5;
@@ -4114,6 +4150,15 @@ if(t.dataset.moduleHand!=null){v.hands=v.hands||['',''];v.hands[+t.dataset.modul
 if(t.dataset.moduleSupport){const a=new Set(v.support||[]);t.checked?a.add(t.dataset.moduleSupport):a.delete(t.dataset.moduleSupport);v.support=[...a]}
 if(v.driving&&gearVehicleErrors(c).length){v.driving=false;toast('구성을 확인한 뒤 운전을 켜 주세요',1)}save(1);render()});
 
+// 테크노스피어 구슬 칸: slot grade per equipped weapon/armor, spheres in it, and what is active (응결 included)
+function hsPanel(c){const S=GEAR_CATALOG.filter(x=>x.kind==='spheres');
+  return HS_SLOTS.map(([k,l])=>{const it=(c.equip||{})[k];if(!it?.name)return'';const h=c.hs?.[k]||{t:'α',s:[]},cap=HS_CAP[h.t]||1,used=hsUsed(h.s),w=hsIsWeapon(k,it),F=hsSlotFx(c,k),sp=n=>S.find(x=>x.n===n)?.sp||'';
+    const cells=(h.s||[]).map((n,i)=>`<span class="hs-c" style="flex:${hsSize(n)}" title="${esc(sp(n))}"><b>${esc(hsKey(n))}</b>${F?.cnt?.[hsKey(n)]>1&&HS[hsKey(n)]?.c2?`<em>응결 ${Math.min(3,F.cnt[hsKey(n)])}</em>`:''}<button class="hs-x" data-act="hsx" data-k="${k}" data-i="${i}" aria-label="${esc(hsKey(n))} 빼기"><i class="gi" data-ic="minus"></i></button></span>`).join('')+Array(Math.max(0,cap-used)).fill('<span class="hs-c empty">빈 칸</span>').join('');
+    const fit=S.filter(x=>(!x.weaponOnly||w)&&hsSize(x.n)<=cap-used);
+    return`<div class="hs-row"><div class="hs-h"><b>${l}</b><span class="muted">${esc(it.name)}</span><span class="sp"></span><select class="sel hs-t" data-hst="${k}" aria-label="${l} 슬롯 등급">${Object.keys(HS_CAP).filter(t=>t!=='δ'||w).map(t=>`<option value="${t}"${t===h.t?' selected':''}>${t} 슬롯 · ${HS_CAP[t]}칸</option>`).join('')}</select></div>
+     <div class="hs-cells">${cells}</div>
+     ${fit.length&&used<cap?`<select class="sel hs-add" data-hsadd="${k}" aria-label="${l}에 호플로스피어 끼우기"><option value="">+ 호플로스피어 끼우기 (${cap-used}칸 남음)</option>${fit.map(x=>`<option value="${esc(x.n)}">${esc(hsKey(x.n))}${hsSize(x.n)>1?` · ${hsSize(x.n)}칸`:''}${x.weaponOnly?' · 무기':''}</option>`).join('')}</select>`:''}
+     ${F&&hsLines(F).length?`<p class="hs-fx">${hsLines(F).map(esc).join(' · ')}</p>`:''}</div>`}).join('')||'<p class="muted">무기나 방어구를 장비하면 구슬 칸이 생겨요.</p>'}
 function pEquip(c,d){const e=c.equip;const okA=allowed(c,'armor'),okS=allowed(c,'shield');
   return card('장비','EQUIPMENT',`${weaponSlot(c,'main','주무기','s-main')}${weaponSlot(c,'off','보조 무기','s-off')}
   <div class="slotc"><div class="sic"><i class="gi" data-ic="s-armor"></i></div><div><div class="t">방어구<em>ARMOR</em></div>
@@ -4122,7 +4167,7 @@ function pEquip(c,d){const e=c.equip;const okA=allowed(c,'armor'),okS=allowed(c,
   <div class="slotc"><div class="sic"><i class="gi" data-ic="s-shield"></i></div><div><div class="t">방패<em>SHIELD</em></div>
    <select class="sel" data-shield="1"><option value="">없음</option>${[0,1].map(r=>(r?'<optgroup label="희귀 방패">':'')+RULES.shields.filter(s=>!s.rare===!r).map(s=>`<option value="${esc(s.n)}"${s.n===e.shield.name?' selected':''}${s.mil&&!okS?' disabled':''}>${esc(s.n)} · 방어 +${s.def}${s.mdef?' · 마방 +'+s.mdef:''}${s.mil?' · 군용':''} · ${s.cost}z</option>`).join('')+(r?'</optgroup>':'')).join('')}</select></div></div>
   <div class="slotc"><div class="sic"><i class="gi" data-ic="s-acc"></i></div><div><div class="t">장신구<em>ACCESSORY</em></div><select class="sel" data-acc="1"><option value="">— 룰북 장신구에서 고르기 —</option>${RULES.acc.map(a=>`<option value="${esc(a.n)}"${a.n===e.acc.name?' selected':''}>${esc(a.n)} · ${a.cost}z</option>`).join('')}</select><div class="row"><label class="f">이름${inp('equip.acc.name',e.acc.name)}</label><label class="f" style="flex:2">효과${inp('equip.acc.note',e.acc.note)}</label></div></div></div>`)
-  +card('장비 적용 범위','EFFECTS',gearAuditHTML(c))+card('개인 탈것 · 모듈','MODULES',gearModulePanel(c))+card('배낭','BACKPACK',`<textarea class="in" data-b="pack" placeholder="장비하지 않은 물건">${esc(c.pack)}</textarea>`)}
+  +card('테크노스피어 · 구슬 칸','SPHERES',hsPanel(c))+card('장비 적용 범위','EFFECTS',gearAuditHTML(c))+card('개인 탈것 · 모듈','MODULES',gearModulePanel(c))+card('배낭','BACKPACK',`<textarea class="in" data-b="pack" placeholder="장비하지 않은 물건">${esc(c.pack)}</textarea>`)}
 
 // pick list for a teaching skill: chips up to (SL × per), the chosen ones' rules text under them
 function choiceUI(c,sk){const L=choiceList(sk),mx=choiceMax(c,sk),pk=c.picks?.[sk]||[];if(!mx||!L.length)return'';const D=CHOICE_SK[sk];
@@ -4336,6 +4381,8 @@ document.addEventListener('change',ev=>{const t=ev.target;if(t.id==='showall'){L
   if(!c)return;
   if(t.id==='addcls'){const v=t.value;if(!v)return;if(v==='__custom'){const n=prompt('클래스 이름');if(n)c.classes.push({name:n,skills:[{n:'스킬',max:1,sl:1,d:''}]})}else c.classes.push({name:v,skills:CLASS[v].skills.map(s=>({n:s.n,max:s.max,sl:0,d:s.d}))});save();render();return}
   if(t.dataset.weapon){const w=RULES.weapons.find(x=>x.n===t.value);if(w){if(t.dataset.weapon==='off'&&w.hand==='양손'&&!(hasHero(c,'괴력의 손아귀')&&['도리깨','중량','창','검'].includes(w.cat)))return toast('이 양손 무기는 보조 손에 장비할 수 없어요',1);c.equip[t.dataset.weapon]=weaponToEq(w);if(t.dataset.weapon==='off'){c.equip.shield={name:'',def:0,mdef:0};if(!canOneHand(c,c.equip.main))c.equip.main=blankW()}if(t.dataset.weapon==='main'&&w.hand==='양손'&&!canOneHand(c,w)){c.equip.off=blankW();c.equip.shield={name:'',def:0,mdef:0}}}save();render();return}
+  if(t.dataset.hst){const k=t.dataset.hst;c.hs=c.hs||{};const h=c.hs[k]=c.hs[k]||{t:'α',s:[]};h.t=t.value;let cut=0;while(hsUsed(h.s)>(HS_CAP[h.t]||1)){h.s.pop();cut++}if(cut)toast(`칸이 줄어 호플로스피어 ${cut}개를 뺐어요`);save();render();return}
+  if(t.dataset.hsadd){const k=t.dataset.hsadd,v=t.value;if(!v)return;c.hs=c.hs||{};const h=c.hs[k]=c.hs[k]||{t:'α',s:[]};if(hsUsed(h.s)+hsSize(v)>(HS_CAP[h.t]||1))return toast('칸이 모자라요',1);h.s.push(v);save();render();return}
   if(t.dataset.armor){const a=RULES.armor.find(x=>x.n===t.value);c.equip.armor=armorToEq(a);save();render();return}
   if(t.dataset.shield!=null&&t.dataset.shield){const s=RULES.shields.find(x=>x.n===t.value);if(s){c.equip.off=blankW();if(!canOneHand(c,c.equip.main))c.equip.main=blankW()}c.equip.shield=s?{gid:s.id,name:s.n,def:s.def,mdef:s.mdef,sp:s.sp||''}:{name:'',def:0,mdef:0};save();render();return}
   if(t.dataset.pick){c.classes[+t.dataset.pick].pick=t.value;save();render();return}
@@ -4403,6 +4450,7 @@ document.addEventListener('click',async ev=>{const tb=ev.target.closest('[data-t
     if(s.off)doRoll('ins','wlp',gearAccuracy(c,'spell'),rollDL(),`${s.n} 시전 · 마법 판정 (MP ${o.mp})`);else{pushLog({kind:'text',who:c.name,text:`${s.n} 시전 (MP −${o.mp})`});toast(`${s.n} 시전`);render()}break}
   case'skpop':{const s=c.classes[+t.dataset.c].skills[+t.dataset.s];c.pop={id:uid(),n:s.n,d:String(s.d||CLASS[c.classes[+t.dataset.c].name]?.skills.find(x=>x.n===s.n)?.d||'').trim()};save();toast(`「${s.n}」 팝업을 띄웠어요`);break}
 case'skopen':t.closest('.skill').classList.toggle('open');break;
+  case'hsx':{const h=c.hs?.[t.dataset.k];if(h){h.s.splice(+t.dataset.i,1);save();render()}break}
   case'cook':{const t2=t.dataset.t;c.cook=c.cook||{};c.cook.ing=c.cook.ing||{};c.cook.ing[t2]=Math.max(0,(+c.cook.ing[t2]||0)+ +t.dataset.v);save();render();break}
   case'cookdel':{if(c.cook?.book)delete c.cook.book[t.dataset.k];save();render();break}
   case'cho':{const k=t.dataset.sk,v=t.dataset.v;c.picks=c.picks||{};const a=c.picks[k]=c.picks[k]||[],i=a.indexOf(v);if(i>=0)a.splice(i,1);else if(a.length<choiceMax(c,k))a.push(v);save();render();break}
