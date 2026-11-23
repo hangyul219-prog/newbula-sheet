@@ -4346,6 +4346,7 @@ let OTS_KEY='';const renderOctopathSheet0=renderOctopathSheet;renderOctopathShee
 // Metaphor sheet: when the page or hero changes, the rows sweep in one after another like the game's menus (plain re-renders while editing stay still)
 let MTP_KEY='';const renderMetaphorSheet0=renderMetaphorSheet;renderMetaphorSheet=function(c,...a){const r=renderMetaphorSheet0.call(this,c,...a);if(!r)return r;
   const root=document.querySelector('#app>.sheet-metaphor'),key=c.id+'|'+tab;if(!root)return r;
+  const wm=root.querySelector('.meta-watermark');if(wm)wm.style.setProperty('--wm-n',Math.max(5,wm.textContent.trim().length));// long words (EQUIPMENT…) shrink instead of being cut off
   root.querySelectorAll('.meta-class-list>button').forEach((b,i)=>{const n=MTP_EMB.indexOf(c.classes[i]?.name);b.style.setProperty('--emb-x',(n<0?15:n)%4);b.style.setProperty('--emb-y',Math.floor((n<0?15:n)/4));b.classList.add('mtp-emb')});// the class's archetype seal at the row's end
   if(key===MTP_KEY)return r;MTP_KEY=key;if(matchMedia('(prefers-reduced-motion: reduce)').matches)return r;
   root.querySelectorAll(MTP_ROWS).forEach((el,i)=>el.style.setProperty('--mi',Math.min(i,14)));root.classList.add('mtp-in');setTimeout(()=>root.classList.remove('mtp-in'),900);return r};
@@ -5350,7 +5351,23 @@ html[data-theme="metaphor"] .sheet-metaphor .meta-status-buttons .btn:not(#_):is
 html[data-theme="metaphor"] .sheet-metaphor .meta-class-list>button.mtp-emb:not(#_){padding-right:46px!important;overflow:visible!important}
 html[data-theme="metaphor"] .sheet-metaphor .meta-class-list>button.mtp-emb:not(#_):before{content:"";position:absolute;right:-18px;top:50%;width:44px;height:44px;margin-top:-22px;background:var(--mtp-emb) calc(var(--emb-x) * 33.333%) calc(var(--emb-y) * 33.333%)/400% 400% no-repeat;filter:drop-shadow(2px 2px 0 rgba(0,0,0,.5));transition:rotate .3s cubic-bezier(.2,.9,.25,1);z-index:2}
 html[data-theme="metaphor"] .sheet-metaphor .meta-class-list>button.mtp-emb:not(#_):hover:before{rotate:-20deg}
-html[data-theme="metaphor"] .sheet-metaphor :is(.spc>.t,.skill>div:has(.nm)):not(#_){position:relative;isolation:isolate}/*/mtp*/
+html[data-theme="metaphor"] .sheet-metaphor :is(.spc>.t,.skill>div:has(.nm)):not(#_){position:relative;isolation:isolate}
+html[data-theme="metaphor"] .sheet-metaphor .meta-watermark:not(#_){font-size:min(19vw,calc(96vw / var(--wm-n,6)))!important;max-width:none!important;overflow:visible!important}
+html[data-theme="metaphor"] .sheet-metaphor .meta-page-heading:not(#_)>span{display:none!important}
+html[data-theme="metaphor"] .sheet-metaphor .meta-page-body .cls:not(#_){background:none!important;border:0!important;box-shadow:none!important}
+html[data-theme="metaphor"] .sheet-metaphor .meta-page-body .cls-h:not(#_){background:none!important;border:0 solid transparent!important;border-width:0 30px 0 12px!important;border-image:var(--mtc-box) 0 80 0 34 fill / 0 30px 0 12px stretch!important;padding:6px 4px!important;margin:10px 0 4px!important}
+html[data-theme="metaphor"] .sheet-metaphor .meta-page-body .cls-h:not(#_) b{font-family:"Bodoni Moda",var(--mtk)!important;font-size:18px!important;color:#fff!important}
+html[data-theme="metaphor"] .sheet-metaphor .meta-page-body .cls-free:not(#_){background:none!important;color:#e9e4d8!important;text-shadow:0 1px 2px #000!important;border:0!important}
+html[data-theme="metaphor"] .sheet-metaphor .meta-page-body :is(.btn.sm,.skpopb):not(#_){background:none!important;border:0!important;border-bottom:1px solid currentColor!important;border-radius:0!important;box-shadow:none!important;clip-path:none!important;padding:0 4px!important;min-height:0!important;font-size:12px!important}
+html[data-theme="metaphor"] .sheet-metaphor .meta-page-body :is(.btn.sm,.skpopb):not(#_):before{display:none!important}
+html[data-theme="metaphor"] .sheet-metaphor .meta-page-body .skill .sl:not(#_) button{background:none!important;border:0!important;box-shadow:none!important;font-family:"Bodoni Moda",serif!important;font-weight:900;font-size:18px;color:#151517!important;min-width:20px}
+html[data-theme="metaphor"] .sheet-metaphor .meta-page-body .skill .sl:not(#_) button .gi{display:none}
+html[data-theme="metaphor"] .sheet-metaphor .meta-page-body .skill .sl:not(#_) button[data-v="-1"]::after{content:"−"}
+html[data-theme="metaphor"] .sheet-metaphor .meta-page-body .skill .sl:not(#_) button[data-v="1"]::after{content:"+"}
+html[data-theme="metaphor"] .sheet-metaphor .meta-page-body .skill .sl:not(#_) button:hover{color:#d7213a!important}
+html[data-theme="metaphor"] .sheet-metaphor .meta-page-body .skill .sl:not(#_) b{font-family:"Bodoni Moda",serif!important;font-size:20px!important;color:#151517!important}
+html[data-theme="metaphor"] .sheet-metaphor .meta-page-body .skill:not(#_) :is(.skpopb,.sl button){color:#151517!important;opacity:1!important}
+html[data-theme="metaphor"] .sheet-metaphor .meta-page-body .skill:not(#_) .skpopb:hover{color:#d7213a!important}/*/mtp*/
 /* buttons: small plates, red swipe on hover / primary */
 html[data-theme="metaphor"] :is(.btn,.tbtn,.wbtn,.bigbtn,.chk-go,.segb,.dlb,.pp-go,.arc-f button){background:none!important;border:0 solid transparent!important;border-width:2px 14px 0 0!important;border-image:var(--mtc-row) 8 60 0 0 fill / 2px 14px 0 0 stretch!important;border-radius:0!important;color:#f5f3ea!important;box-shadow:none!important;clip-path:none!important;transform:none!important;font-weight:700!important}
 html[data-theme="metaphor"] :is(.btn,.tbtn,.wbtn,.bigbtn,.chk-go,.segb,.dlb,.pp-go,.arc-f button):hover:not(:disabled),html[data-theme="metaphor"] :is(.btn,.tbtn,.segb,.dlb,.arc-f button).on,html[data-theme="metaphor"] :is(.btn,.tbtn,.wbtn,.bigbtn).gold,html[data-theme="metaphor"] :is(.btn,.tbtn,.wbtn).red,html[data-theme="metaphor"] .wbtn.go{border-image:var(--mtc-on) 10 60 0 0 fill / 2px 14px 0 0 stretch!important;color:#fff!important}
