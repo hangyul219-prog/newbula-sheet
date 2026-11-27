@@ -4836,6 +4836,7 @@ document.addEventListener('change',ev=>{const t=ev.target;if(t.id==='showall'){L
   if(t.dataset.b){save();if(t.tagName==='SELECT'||t.dataset.n)render()}});
 document.addEventListener('click',async ev=>{const tb=ev.target.closest('[data-tab]');if(tb){tab=tb.dataset.tab;LS.set('fu.sheet.tab',tab);render();return}
   const t=ev.target.closest('[data-act]');if(!t||t.classList.contains('dis'))return;const c=C();const a=t.dataset.act,i=+t.dataset.i;// greyed-out wizard choices (mastered class, maxed skill, d12) stay unpickable
+  const MA=c&&{attack:'atk',cast:'spell',skpop:'skill','hero-use':'skill'}[a];if(MA&&c.motions?.[MA]){c.mo={a:MA,t:Date.now(),open:false};save()}// 전투 모션 from the sheet's own buttons
   switch(a){
   /* wizards */
   case'clswiz':cwStart();break;
