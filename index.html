@@ -5122,6 +5122,9 @@ async function rollFreeDie(button){
     if(VOL.fx!==false){SFX.play('dice');await DRanimate(die,number,n,value)}
     else number.textContent=value;
     out.setAttribute('aria-label',`d${n} 결과 ${value}`);
+    // 자유 주사위도 판정 기록과 잡담에 남김 (사용자 요청 2026-11-28)
+    const c=C(),t=Date.now()+NET.skew;pushLog({kind:'roll',cid:c?.id||'',who:c?.name||USER||'?',label:'자유 주사위',dice:[{d:n,r:value}],mod:0,total:value,t,noFx:true});
+    const L=LS.get('fu.chat',[]);L.push({id:uid(),t,who:c?'c:'+c.id:'spec',name:USER||c?.name||'관전자',text:`d${n} 자유 주사위`,roll:[value],d:n,mod:0,total:value});SYNC.set('fu.chat',L.slice(-500));
   }finally{button.disabled=false}
 }
 
